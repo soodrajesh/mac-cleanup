@@ -75,10 +75,16 @@ open /Applications/DiskSweeper.app
   Downloads.
 - **Deep Scan** — the one category that looks at actual personal content:
   recursively scans Documents, Desktop, Pictures, and Movies for individual
-  files at or above 200MB. No age check (an old file in these folders is
-  often exactly the one you meant to keep), and every result is `.caution`.
-  **Opt-in** — unlike every other category, it never runs automatically;
-  you start it explicitly from its own section.
+  files *and* whole folders at or above 200MB (a folder made of thousands of
+  small files is exactly as worth surfacing as one big file). A folder is
+  only reported when its large children don't already collectively explain
+  ~all of it — otherwise those children are reported instead, drilling down
+  to the most specific large item rather than flagging "Documents" merely
+  because something inside it is big — and a reported item's descendants are
+  never *also* reported, so nothing double-counts. No age check (an old file
+  in these folders is often exactly the one you meant to keep), and every
+  result is `.caution`. **Opt-in** — unlike every other category, it never
+  runs automatically; you start it explicitly from its own section.
 
 Every item row shows its full path (home-relative, e.g. `~/Downloads/x.zip`)
 alongside its size, so you always know exactly where something lives before

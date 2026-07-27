@@ -8,7 +8,7 @@ struct DeepScanStartView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Recursively looks through \(DeepScanService.defaultRoots.joined(separator: ", ")) for individual files at or above \(DeepScanService.sizeThresholdBytes.humanBytes) — no age check, since an old file in these folders is often one you meant to keep.")
+            Text("Recursively looks through \(DeepScanService.defaultRoots.joined(separator: ", ")) for individual files *and* whole folders at or above \(DeepScanService.sizeThresholdBytes.humanBytes) — no age check, since an old file in these folders is often one you meant to keep.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
             Button("Start Deep Scan…") { model.scan(.deepScan) }
