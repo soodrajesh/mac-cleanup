@@ -13,11 +13,18 @@ struct MainView: View {
             header
             Divider()
             OverviewView(isCollapsed: $isOverviewCollapsed).padding([.horizontal, .top])
-            categoryTabs.padding(.horizontal)
-            Divider().padding(.top, 8)
-            ScrollView {
-                CategorySectionView(category: selectedCategory)
-                    .padding()
+            // Overview and the category tabs are mutually exclusive — the
+            // dashboard and a specific category's review list both want the
+            // window's room, so only one shows at a time.
+            if isOverviewCollapsed {
+                categoryTabs.padding(.horizontal)
+                Divider().padding(.top, 8)
+                ScrollView {
+                    CategorySectionView(category: selectedCategory)
+                        .padding()
+                }
+            } else {
+                Spacer(minLength: 0)
             }
             Divider()
             SelectionFooterBar(showConfirm: $showConfirmSheet)
@@ -55,6 +62,9 @@ struct MainView: View {
     }
 
     private var categoryTabs: some View {
+        // Only ever shown while Overview is collapsed (see body), so there's
+        // no scenario where a tab gets picked while Overview is still up —
+        // no need to separately force a collapse on selection here.
         Picker("", selection: $selectedCategory) {
             ForEach(CleanupCategory.allCases) { category in
                 Label(category.tabLabel, systemImage: category.symbol).tag(category)
@@ -63,9 +73,5 @@ struct MainView: View {
         .pickerStyle(.segmented)
         .labelsHidden()
         .padding(.vertical, 8)
-        // Overview is the dashboard you see first; the moment you pick a
-        // tab you've moved on to a specific category, so collapse it to
-        // give that category's content the room instead.
-        .onChange(of: selectedCategory) { _ in isOverviewCollapsed = true }
     }
 }
