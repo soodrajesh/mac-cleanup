@@ -64,14 +64,28 @@ open /Applications/DiskSweeper.app
 - **Browser Caches** — Safari, Chrome, Firefox, and Arc **cache data only**
   — never history, passwords, bookmarks, or cookies. A browser you don't
   have installed just doesn't show up.
-- **Trash & Downloads** — current Trash size with its own Empty Trash
-  action, and a Downloads review list surfacing files that are old (90+
-  days since last use) and/or large (100MB+) — never auto-deleted, always
-  reviewed like everything else.
+- **Downloads** — a review list surfacing files in `~/Downloads` that are old
+  (90+ days since last use) and/or large (100MB+) — never auto-deleted,
+  always reviewed like everything else. Its own category, separate from
+  Trash.
+- **Trash** — current Trash size with its own Empty Trash action. Not
+  itemized (it's already the safe zone); its own category, separate from
+  Downloads.
 
 Every scan runs concurrently and sizes items progressively (via `du`,
 bounded to a handful of processes at once) so the UI never blocks, even on
 a large `DerivedData` folder.
+
+## Overview panel
+
+A live-updating snapshot sits above the categories: a single segmented
+storage bar showing space by category (a part-to-whole comparison, which a
+bar shows more precisely than a pie/donut's arc angles), a legend with exact
+sizes, and the 10 largest individually reviewable items across every
+category — so the biggest wins are visible without expanding each section
+by hand. Colors are assigned in a fixed order per category (never reassigned
+or cycled) and are contrast-checked for colorblind-safety in both light and
+dark mode.
 
 ## Layout
 
@@ -80,9 +94,10 @@ Sources/
   App.swift, Models.swift, Support.swift
   Services/  SizeCalculator, TrashService, DiskInfoService,
              CacheScanService, DevToolScanService, BrewService,
-             DockerService, BrowserScanService, TrashDownloadsService
-  Views/     MainView, CategorySectionView, ItemRowView, CLIActionRowView,
-             TrashHeaderView, ConfirmDeletionSheet, DeletionProgressView
+             DockerService, BrowserScanService, DownloadsScanService
+  Views/     MainView, OverviewView, CategorySectionView, ItemRowView,
+             CLIActionRowView, TrashHeaderView, ConfirmDeletionSheet,
+             DeletionProgressView
   Components/ SweepModel, SelectionFooterBar
 ```
 

@@ -12,6 +12,7 @@ struct MainView: View {
             Divider()
             ScrollView {
                 VStack(spacing: 12) {
+                    OverviewView()
                     ForEach(CleanupCategory.allCases) { category in
                         CategorySectionView(category: category)
                     }

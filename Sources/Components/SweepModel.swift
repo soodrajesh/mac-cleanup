@@ -10,6 +10,10 @@ final class SweepModel: ObservableObject {
     @Published var deletionOutcomes: [TrashService.DeletionOutcome] = []
     @Published var deletionProgress: Double = 0
     @Published var deletionTotal: Int = 0
+    /// Trash isn't itemized (see `itemLister`), so its size lives here as the
+    /// single source of truth — read by both `TrashHeaderView` and the
+    /// Overview chart, rather than each fetching it independently.
+    @Published var trashBytes: Int64?
 
     private var deletionTask: Task<Void, Never>?
 
@@ -17,6 +21,20 @@ final class SweepModel: ObservableObject {
         for category in CleanupCategory.allCases {
             scan(category)
         }
+        refreshTrashSize()
+    }
+
+    func refreshTrashSize() {
+        Task.detached(priority: .utility) { [weak self] in
+            let bytes = TrashService.trashSize()
+            await MainActor.run { self?.trashBytes = bytes }
+        }
+    }
+
+    /// Copy for the Overview chart/legend: known category totals plus the
+    /// separately-tracked Trash size, in fixed display order.
+    func bytes(for category: CleanupCategory) -> Int64 {
+        category == .trash ? (trashBytes ?? 0) : (results[category]?.totalBytes ?? 0)
     }
 
     func scan(_ category: CleanupCategory) {
@@ -50,10 +68,11 @@ final class SweepModel: ObservableObject {
 
     private func itemLister(for category: CleanupCategory) -> () -> [ScanItem] {
         switch category {
-        case .systemCaches:   return CacheScanService.listItems
-        case .devTools:       return { DevToolScanService.listItems() + BrewService.listItems() + DockerService.listItems() }
-        case .browserCaches:  return BrowserScanService.listItems
-        case .trashDownloads: return TrashDownloadsService.listItems
+        case .systemCaches:  return CacheScanService.listItems
+        case .devTools:      return { DevToolScanService.listItems() + BrewService.listItems() + DockerService.listItems() }
+        case .browserCaches: return BrowserScanService.listItems
+        case .downloads:     return DownloadsScanService.listItems
+        case .trash:         return { [] }  // aggregate stat only — rendered by TrashHeaderView, not itemized
         }
     }
 
@@ -149,8 +168,19 @@ final class SweepModel: ObservableObject {
                 // Rescan affected categories so nothing stale lingers.
                 let affected = Set(items.map { self.category(for: $0) })
                 for category in affected { self.scan(category) }
+                // Trash grew by whatever just got moved into it.
+                self.refreshTrashSize()
             }
         }
+    }
+
+    /// Empties Trash via `TrashService.emptyTrash()` (the app's one sanctioned
+    /// use of `removeItem`) and refreshes the tracked size afterward.
+    func emptyTrash() async throws {
+        try await Task.detached(priority: .userInitiated) {
+            try TrashService.emptyTrash()
+        }.value
+        refreshTrashSize()
     }
 
     private func category(for item: ScanItem) -> CleanupCategory {

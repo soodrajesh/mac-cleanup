@@ -1,9 +1,8 @@
 import Foundation
 
-/// Category 4: Trash (shown as one aggregate stat with its own Empty Trash
-/// action, not itemized here — it's already the safe zone) and a Downloads
-/// triage list (old/large files surfaced for review, never auto-deleted).
-enum TrashDownloadsService {
+/// Category: Downloads triage — old and/or large files surfaced for review,
+/// never auto-deleted. Its own category, separate from Trash.
+enum DownloadsScanService {
     static let ageThresholdDays = 90
     static let sizeThresholdBytes: Int64 = 100 * 1024 * 1024  // 100 MB
 
@@ -43,26 +42,6 @@ enum TrashDownloadsService {
                 lastAccessed: lastUsed,
                 safety: .caution,
                 removal: .trash)
-        }
-    }
-
-    /// Sum of everything currently in Trash.
-    static func trashSize() -> Int64 {
-        let trash = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".Trash")
-        guard let children = try? FileManager.default.contentsOfDirectory(
-            at: trash, includingPropertiesForKeys: nil, options: [.skipsHiddenFiles]) else { return 0 }
-        return children.reduce(0) { $0 + (SizeCalculator.size(of: $1) ?? 0) }
-    }
-
-    /// The one sanctioned use of `removeItem` in the app — there's nowhere
-    /// further to trash Trash's own contents to. Callers must show
-    /// unmistakably-worded "cannot be undone" copy before calling this.
-    static func emptyTrash() throws {
-        let trash = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".Trash")
-        guard let children = try? FileManager.default.contentsOfDirectory(
-            at: trash, includingPropertiesForKeys: nil, options: [.skipsHiddenFiles]) else { return }
-        for child in children {
-            try? FileManager.default.removeItem(at: child)
         }
     }
 }

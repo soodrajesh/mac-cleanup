@@ -1,28 +1,44 @@
-import Foundation
+import SwiftUI
 
 enum CleanupCategory: String, CaseIterable, Identifiable {
     case systemCaches = "System & App Caches"
     case devTools = "Dev Tool Caches"
     case browserCaches = "Browser Caches"
-    case trashDownloads = "Trash & Downloads"
+    case downloads = "Downloads"
+    case trash = "Trash"
 
     var id: String { rawValue }
 
     var symbol: String {
         switch self {
-        case .systemCaches:   return "internaldrive"
-        case .devTools:       return "hammer"
-        case .browserCaches:  return "safari"
-        case .trashDownloads: return "trash"
+        case .systemCaches:  return "internaldrive"
+        case .devTools:      return "hammer"
+        case .browserCaches: return "safari"
+        case .downloads:     return "arrow.down.circle"
+        case .trash:         return "trash"
         }
     }
 
     var subtitle: String {
         switch self {
-        case .systemCaches:   return "Regenerable app & system caches, logs, crash reports"
-        case .devTools:       return "Xcode, simulators, package manager caches"
-        case .browserCaches:  return "Cache data only — never history, passwords, or cookies"
-        case .trashDownloads: return "Empty Trash, review old or large downloads"
+        case .systemCaches:  return "Regenerable app & system caches, logs, crash reports"
+        case .devTools:      return "Xcode, simulators, package manager caches"
+        case .browserCaches: return "Cache data only — never history, passwords, or cookies"
+        case .downloads:     return "Old or large files, reviewed individually — never auto-selected"
+        case .trash:         return "Empty Trash — nowhere further to trash this to"
+        }
+    }
+
+    /// Fixed-order categorical color (never reassigned/cycled) — see
+    /// `Support.swift`'s `Color(light:dark:)`. Slots follow the validated
+    /// default order from the design system's palette reference.
+    var chartColor: Color {
+        switch self {
+        case .systemCaches:  return Color(light: "#2a78d6", dark: "#3987e5")  // slot 1 · blue
+        case .devTools:      return Color(light: "#eb6834", dark: "#d95926")  // slot 2 · orange
+        case .browserCaches: return Color(light: "#1baf7a", dark: "#199e70")  // slot 3 · aqua
+        case .downloads:     return Color(light: "#eda100", dark: "#c98500")  // slot 4 · yellow
+        case .trash:         return Color(light: "#e87ba4", dark: "#d55181") // slot 5 · magenta
         }
     }
 }

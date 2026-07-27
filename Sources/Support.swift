@@ -1,4 +1,29 @@
 import AppKit
+import SwiftUI
+
+extension Color {
+    /// A categorical color that steps between light/dark hex values with the
+    /// system appearance — used for the fixed-order chart palette so it stays
+    /// contrast-correct in both modes without a manual toggle.
+    init(light: String, dark: String) {
+        self.init(NSColor(name: nil) { appearance in
+            appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
+                ? NSColor(hex: dark) : NSColor(hex: light)
+        })
+    }
+}
+
+extension NSColor {
+    convenience init(hex: String) {
+        let cleaned = hex.trimmingCharacters(in: CharacterSet(charactersIn: "#"))
+        var value: UInt64 = 0
+        Scanner(string: cleaned).scanHexInt64(&value)
+        let r = Double((value >> 16) & 0xFF) / 255
+        let g = Double((value >> 8) & 0xFF) / 255
+        let b = Double(value & 0xFF) / 255
+        self.init(red: r, green: g, blue: b, alpha: 1)
+    }
+}
 
 extension Int64 {
     var humanBytes: String {

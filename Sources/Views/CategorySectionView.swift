@@ -29,28 +29,28 @@ struct CategorySectionView: View {
         VStack(alignment: .leading, spacing: 0) {
             header
             if !isCollapsed {
-                VStack(spacing: 0) {
-                    if category == .trashDownloads {
-                        TrashHeaderView()
-                        Divider()
-                    }
-                    if result?.isScanning == true && (result?.items.isEmpty ?? true) {
-                        HStack { ProgressView().controlSize(.small); Text("Scanning…").foregroundStyle(.secondary) }
-                            .padding(.vertical, 8)
-                    } else if trashItems.isEmpty && simctlItems.isEmpty && brewItems.isEmpty && dockerItems.isEmpty {
-                        Text("Nothing found").font(.caption).foregroundStyle(.secondary).padding(.vertical, 8)
-                    }
+                if category == .trash {
+                    TrashHeaderView().padding(.leading, 4)
+                } else {
+                    VStack(spacing: 0) {
+                        if result?.isScanning == true && (result?.items.isEmpty ?? true) {
+                            HStack { ProgressView().controlSize(.small); Text("Scanning…").foregroundStyle(.secondary) }
+                                .padding(.vertical, 8)
+                        } else if trashItems.isEmpty && simctlItems.isEmpty && brewItems.isEmpty && dockerItems.isEmpty {
+                            Text("Nothing found").font(.caption).foregroundStyle(.secondary).padding(.vertical, 8)
+                        }
 
-                    ForEach(trashItems) { item in
-                        ItemRowView(item: item)
-                        Divider()
-                    }
+                        ForEach(trashItems) { item in
+                            ItemRowView(item: item)
+                            Divider()
+                        }
 
-                    if !simctlItems.isEmpty { simctlSection }
-                    if !brewItems.isEmpty { brewSection }
-                    if !dockerItems.isEmpty { dockerSection }
+                        if !simctlItems.isEmpty { simctlSection }
+                        if !brewItems.isEmpty { brewSection }
+                        if !dockerItems.isEmpty { dockerSection }
+                    }
+                    .padding(.leading, 4)
                 }
-                .padding(.leading, 4)
             }
         }
         .padding(10)
@@ -71,7 +71,9 @@ struct CategorySectionView: View {
                     Text(category.subtitle).font(.caption).foregroundStyle(.secondary)
                 }
                 Spacer()
-                if let result {
+                // The Trash category has no itemized scan — TrashHeaderView
+                // fetches and shows its own real total below.
+                if category != .trash, let result {
                     if result.isScanning { ProgressView().controlSize(.small) }
                     Text(result.totalBytes.humanBytes).monospacedDigit().foregroundStyle(.secondary)
                 }
