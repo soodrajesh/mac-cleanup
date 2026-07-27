@@ -17,7 +17,7 @@ struct CategorySectionView: View {
 
     private var result: ScanResult? { model.results[category] }
 
-    private var allTrashItems: [ScanItem] { (result?.items ?? []).filter { $0.removal == .trash } }
+    private var allTrashItems: [ScanItem] { sortedBySize((result?.items ?? []).filter { $0.removal == .trash }) }
     /// Filters by name, subtitle, or path — a category like Deep Scan can run
     /// long, so narrowing by typed text beats scrolling the whole list.
     private var trashItems: [ScanItem] {
@@ -28,9 +28,14 @@ struct CategorySectionView: View {
                 || $0.url.path.localizedCaseInsensitiveContains(searchText)
         }
     }
-    private var simctlItems: [ScanItem] { (result?.items ?? []).filter { $0.removal == .cliNative(toolName: "simctl") } }
-    private var brewItems: [ScanItem] { (result?.items ?? []).filter { $0.removal == .cliNative(toolName: "brew") } }
-    private var dockerItems: [ScanItem] { (result?.items ?? []).filter { $0.removal == .cliNative(toolName: "docker") } }
+    private var simctlItems: [ScanItem] { sortedBySize((result?.items ?? []).filter { $0.removal == .cliNative(toolName: "simctl") }) }
+    private var brewItems: [ScanItem] { sortedBySize((result?.items ?? []).filter { $0.removal == .cliNative(toolName: "brew") }) }
+    private var dockerItems: [ScanItem] { sortedBySize((result?.items ?? []).filter { $0.removal == .cliNative(toolName: "docker") }) }
+    /// Biggest wins first, in every list — items still `.measuring` (size
+    /// unknown) sink to the bottom and float up into place as they resolve.
+    private func sortedBySize(_ items: [ScanItem]) -> [ScanItem] {
+        items.sorted { ($0.status.sizeIfKnown ?? 0) > ($1.status.sizeIfKnown ?? 0) }
+    }
     /// Downloads and Deep Scan are 100% `.caution` by design, so "Select All
     /// Safe" would silently select nothing there — only show it where it
     /// can actually do something.
