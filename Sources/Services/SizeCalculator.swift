@@ -28,6 +28,22 @@ enum SizeCalculator {
     /// network mount, say) — past the deadline, kill it; a single bad path
     /// degrades to "failed to measure," not a stuck scan.
     static func size(of url: URL, timeoutSeconds: TimeInterval = 20) -> Int64? {
+        // A plain file (a Preferences .plist, a .binarycookies file, most
+        // Homebrew cache entries) doesn't need a recursive tree walk at
+        // all — a single stat() beats spawning `du` and waiting for it to
+        // exit. Only directories (app bundles, Containers) go through `du`,
+        // which is where a real recursive summation is actually needed.
+        // (This reports logical byte size rather than `du`'s allocated-
+        // block size — a few KB of difference at most for a single small
+        // file, invisible at the humanBytes display precision this app
+        // uses everywhere, and not worth a subprocess spawn to avoid.)
+        var isDir: ObjCBool = false
+        guard FileManager.default.fileExists(atPath: url.path, isDirectory: &isDir) else { return nil }
+        if !isDir.boolValue {
+            let attrs = try? FileManager.default.attributesOfItem(atPath: url.path)
+            return (attrs?[.size] as? NSNumber)?.int64Value
+        }
+
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/du")
         process.arguments = ["-sk", url.path]
@@ -59,8 +75,16 @@ enum SizeCalculator {
 
     /// Sizes many items concurrently (bounded), publishing each result to
     /// `onSized` as soon as it's known so the UI fills in progressively
-    /// instead of blocking on the slowest item.
-    static func sizeAll(_ urls: [URL], maxConcurrent: Int = 5, onSized: @escaping @Sendable (URL, Int64?) -> Void) async {
+    /// instead of blocking on the slowest item. `du` is I/O-bound, not
+    /// CPU-bound, so this scales with the machine's core count rather
+    /// than a fixed small number — on the SSDs every Mac ships with, that
+    /// meaningfully cuts wall-clock time for a category with a lot of
+    /// items (App Cleaner sizing ~90 paths) without any correctness cost.
+    static func sizeAll(
+        _ urls: [URL],
+        maxConcurrent: Int = ProcessInfo.processInfo.activeProcessorCount,
+        onSized: @escaping @Sendable (URL, Int64?) -> Void
+    ) async {
         await withTaskGroup(of: Void.self) { group in
             var iterator = urls.makeIterator()
 

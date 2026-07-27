@@ -113,7 +113,9 @@ open /Applications/DiskSweeper.app
   abandoned. Labeled "Orphaned: `<bundle ID>` — ..." and carries
   extra-hedged copy, since there's no live app to confirm against — it
   might belong to something installed outside `/Applications`, not just
-  something already gone.
+  something already gone. Like Deep Scan, its results persist across
+  launches with a "Scanned n ago" timestamp, so reopening the tab doesn't
+  mean re-paying the scan cost every time.
 - **Filter within a category** — any category with more than a handful of
   items gets a "Filter by name or path" box (most relevant on Deep Scan,
   where results can run long) that narrows the list live as you type.
@@ -127,9 +129,15 @@ Every item row shows its full path (home-relative, e.g. `~/Downloads/x.zip`)
 alongside its size, so you always know exactly where something lives before
 deciding on it.
 
-Every scan runs concurrently and sizes items progressively (via `du`,
-bounded to a handful of processes at once) so the UI never blocks, even on
-a large `DerivedData` folder.
+Every scan runs concurrently and sizes items progressively (via `du`, bounded
+to the machine's core count rather than a fixed small number, since sizing
+is I/O- not CPU-bound) so the UI never blocks, even on a large `DerivedData`
+folder — with a live "N/M sized" count next to the spinner for a category
+with a lot of items (App Cleaner sizing ~90 paths, some multi-gigabyte, is
+real wall-clock time — that counter is what tells you it's progressing, not
+stuck). A plain file (a Preferences `.plist`, a cache tarball) skips `du`
+entirely in favor of a direct `stat()`, since a subprocess spawn is overkill
+for something that doesn't need a recursive tree walk.
 
 ## Navigation
 
@@ -177,7 +185,7 @@ Sources/
   Services/  SizeCalculator, TrashService, DiskInfoService,
              CacheScanService, DevToolScanService, BrewService,
              DockerService, BrowserScanService, DownloadsScanService,
-             DeepScanService, DeepScanCache, AppCleanerService
+             DeepScanService, ScanCache, AppCleanerService
   Views/     MainView, OverviewView, CategorySectionView, ItemRowView,
              CLIActionRowView, TrashHeaderView, DeepScanStartView,
              AppCleanerStartView, ConfirmDeletionSheet, DeletionProgressView

@@ -18,18 +18,27 @@ final class SweepModel: ObservableObject {
     /// distinct from `trashBytes == nil` (which also means "not loaded yet")
     /// so the UI never silently shows "0" when the real answer is "can't tell".
     @Published var trashAccessDenied = false
-    /// When Deep Scan last actually ran — `nil` means never (this launch or
-    /// any prior one). Shown next to its results so a cached list isn't
-    /// mistaken for a fresh one.
+    /// When Deep Scan / App Cleaner last actually ran — `nil` means never
+    /// (this launch or any prior one). Shown next to their results so a
+    /// cached list isn't mistaken for a fresh one.
     @Published var deepScanLastRun: Date?
+    @Published var appCleanerLastRun: Date?
 
     private var deletionTask: Task<Void, Never>?
 
     init() {
-        if let cached = DeepScanCache.load() {
+        if let cached = ScanCache.load(key: Self.cacheKey(for: .deepScan)) {
             results[.deepScan] = ScanResult(category: .deepScan, items: cached.items, isScanning: false)
             deepScanLastRun = cached.scannedAt
         }
+        if let cached = ScanCache.load(key: Self.cacheKey(for: .appCleaner)) {
+            results[.appCleaner] = ScanResult(category: .appCleaner, items: cached.items, isScanning: false)
+            appCleanerLastRun = cached.scannedAt
+        }
+    }
+
+    private static func cacheKey(for category: CleanupCategory) -> String {
+        "scanCache.\(category.rawValue).v1"
     }
 
     func scanAll() {
@@ -85,10 +94,10 @@ final class SweepModel: ObservableObject {
                 guard var result = self.results[category] else { return }
                 result.isScanning = false
                 self.results[category] = result
-                if category == .deepScan {
+                if category == .deepScan || category == .appCleaner {
                     let now = Date()
-                    self.deepScanLastRun = now
-                    DeepScanCache.save(scannedAt: now, items: result.items)
+                    if category == .deepScan { self.deepScanLastRun = now } else { self.appCleanerLastRun = now }
+                    ScanCache.save(key: Self.cacheKey(for: category), scannedAt: now, items: result.items)
                 }
             }
         }

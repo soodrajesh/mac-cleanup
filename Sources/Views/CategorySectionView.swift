@@ -134,6 +134,11 @@ struct CategorySectionView: View {
                     .font(.caption)
             }
             if category == .appCleaner && result != nil {
+                if result?.isScanning == false, let lastRun = model.appCleanerLastRun {
+                    Text("Scanned \(lastRun.relativeDescription)")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
                 Button("Scan Again") { model.scan(.appCleaner) }
                     .buttonStyle(.borderless)
                     .font(.caption)
