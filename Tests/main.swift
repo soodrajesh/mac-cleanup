@@ -127,6 +127,27 @@ do {
     expectEqual(paths.count, Set(paths).count, "still no duplicate candidate paths")
 }
 
+// MARK: - SizeCalculator timeout guard
+
+do {
+    // A deadline that's already effectively expired must still return nil
+    // rather than hang or crash — this is what actually proves the watchdog
+    // terminates the process, not just that the parameter is accepted.
+    // `/System` is large enough that `du` can't possibly finish inside 1ms,
+    // so the race is deterministic in the timeout's favor.
+    let start = Date()
+    let result = SizeCalculator.size(of: URL(fileURLWithPath: "/System"), timeoutSeconds: 0.001)
+    let elapsed = Date().timeIntervalSince(start)
+    expect(result == nil, "an expired timeout returns nil instead of the real (much larger) size")
+    expect(elapsed < 5, "a timed-out call returns promptly rather than hanging")
+}
+
+do {
+    // A normal, fast, valid path still sizes correctly under a real timeout.
+    let result = SizeCalculator.size(of: URL(fileURLWithPath: NSTemporaryDirectory()))
+    expect(result != nil, "a normal path still sizes correctly with the default timeout")
+}
+
 // MARK: - Report
 
 if failures == 0 {

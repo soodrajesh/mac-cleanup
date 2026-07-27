@@ -53,12 +53,15 @@ enum DockerService {
         process.arguments = args
         let pipe = Pipe()
         process.standardOutput = pipe
-        process.standardError = Pipe()
+        process.standardError = FileHandle.nullDevice
         do {
             try process.run()
+            // Read to EOF before waiting on exit, matching every other
+            // Process call in this project — see SizeCalculator.size(of:)
+            // for why waiting first risks a pipe-buffer deadlock.
+            let data = pipe.fileHandleForReading.readDataToEndOfFile()
             process.waitUntilExit()
             guard process.terminationStatus == 0 else { return nil }
-            let data = pipe.fileHandleForReading.readDataToEndOfFile()
             return String(data: data, encoding: .utf8)
         } catch {
             return nil

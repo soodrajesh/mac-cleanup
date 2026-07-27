@@ -118,7 +118,12 @@ enum DeepScanService {
         process.arguments = ["-a", "-k", root.path]
         let pipe = Pipe()
         process.standardOutput = pipe
-        process.standardError = Pipe()
+        // Discarded straight to /dev/null, not piped: an unread stderr pipe
+        // fills its kernel buffer once `du` hits enough permission-denied
+        // entries (routine on a deep recursive walk) and blocks `du` on
+        // writing to it forever — see SizeCalculator.size(of:) for the full
+        // story on this failure mode.
+        process.standardError = FileHandle.nullDevice
         do {
             try process.run()
         } catch {

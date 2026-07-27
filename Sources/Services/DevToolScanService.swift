@@ -56,11 +56,15 @@ enum DevToolScanService {
         process.arguments = ["simctl", "list", "devices", "unavailable", "-j"]
         let pipe = Pipe()
         process.standardOutput = pipe
-        process.standardError = Pipe()
+        process.standardError = FileHandle.nullDevice
         do {
             try process.run()
-            process.waitUntilExit()
+            // Read to EOF before waiting on exit — `simctl list -j` can emit
+            // a sizable JSON blob on a machine with many simulator runtimes,
+            // easily past a pipe's kernel buffer; waiting first risks the
+            // same read-after-wait deadlock covered in SizeCalculator.
             let data = pipe.fileHandleForReading.readDataToEndOfFile()
+            process.waitUntilExit()
             guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                   let devicesByRuntime = json["devices"] as? [String: Any] else { return [] }
 

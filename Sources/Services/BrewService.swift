@@ -17,14 +17,20 @@ enum BrewService {
         process.arguments = ["cleanup", "--dry-run"]
         let pipe = Pipe()
         process.standardOutput = pipe
-        process.standardError = Pipe()
+        process.standardError = FileHandle.nullDevice
         do {
             try process.run()
-            process.waitUntilExit()
         } catch {
             return []
         }
+        // Read to EOF *before* waiting on exit: `brew cleanup --dry-run` can
+        // print one "Would remove" line per old version file, easily enough
+        // to fill the pipe's kernel buffer on a cruft-heavy Homebrew
+        // install — waiting first (the previous order here) would then
+        // deadlock, since `brew` blocks writing to a full, unread pipe
+        // while we block waiting for it to exit.
         let data = pipe.fileHandleForReading.readDataToEndOfFile()
+        process.waitUntilExit()
         guard let output = String(data: data, encoding: .utf8) else { return [] }
 
         var pathsByName: [String: [String]] = [:]
