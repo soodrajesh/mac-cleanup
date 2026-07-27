@@ -51,6 +51,8 @@ struct CategorySectionView: View {
                 TrashHeaderView().padding(.leading, 4)
             } else if category == .deepScan && result == nil {
                 DeepScanStartView().padding(.leading, 4)
+            } else if category == .appCleaner && result == nil {
+                AppCleanerStartView().padding(.leading, 4)
             } else {
                 VStack(spacing: 0) {
                     if result?.isScanning == true && (result?.items.isEmpty ?? true) {
@@ -114,6 +116,12 @@ struct CategorySectionView: View {
                 Button("Scan Again") { model.scan(.deepScan) }
                     .buttonStyle(.borderless)
                     .font(.caption)
+            }
+            if category == .appCleaner && result != nil {
+                Button("Scan Again") { model.scan(.appCleaner) }
+                    .buttonStyle(.borderless)
+                    .font(.caption)
+                    .help("Rescan after quitting an app you want to include")
             }
         }
         .padding(.vertical, 4)

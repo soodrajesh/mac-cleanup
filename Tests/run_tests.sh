@@ -12,6 +12,7 @@ swiftc -O \
   Sources/Services/SizeCalculator.swift \
   Sources/Services/BrewService.swift \
   Sources/Services/DeepScanService.swift \
+  Sources/Services/AppCleanerService.swift \
   -o /tmp/disksweeper-tests
 
 /tmp/disksweeper-tests

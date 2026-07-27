@@ -33,10 +33,10 @@ final class SweepModel: ObservableObject {
     }
 
     func scanAll() {
-        // Deep Scan looks at actual personal content (Documents, Desktop,
-        // Pictures, Movies) rather than disposable cache — it only runs
-        // when explicitly started, never automatically.
-        for category in CleanupCategory.allCases where category != .deepScan {
+        // Deep Scan and App Cleaner both look at actual personal
+        // content/installed apps rather than disposable cache — they only
+        // run when explicitly started, never automatically.
+        for category in CleanupCategory.allCases where category != .deepScan && category != .appCleaner {
             scan(category)
         }
         refreshTrashSize()
@@ -102,6 +102,7 @@ final class SweepModel: ObservableObject {
         case .downloads:     return DownloadsScanService.listItems
         case .trash:         return { [] }  // aggregate stat only — rendered by TrashHeaderView, not itemized
         case .deepScan:      return DeepScanService.listItems
+        case .appCleaner:    return AppCleanerService.listItems
         }
     }
 

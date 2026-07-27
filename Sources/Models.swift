@@ -7,6 +7,7 @@ enum CleanupCategory: String, CaseIterable, Identifiable {
     case downloads = "Downloads"
     case trash = "Trash"
     case deepScan = "Deep Scan"
+    case appCleaner = "App Cleaner"
 
     var id: String { rawValue }
 
@@ -21,6 +22,7 @@ enum CleanupCategory: String, CaseIterable, Identifiable {
         case .downloads:     return "Downloads"
         case .trash:         return "Trash"
         case .deepScan:      return "Deep Scan"
+        case .appCleaner:    return "Apps"
         }
     }
 
@@ -32,6 +34,7 @@ enum CleanupCategory: String, CaseIterable, Identifiable {
         case .downloads:     return "arrow.down.circle"
         case .trash:         return "trash"
         case .deepScan:      return "doc.text.magnifyingglass"
+        case .appCleaner:    return "square.grid.2x2"
         }
     }
 
@@ -43,6 +46,7 @@ enum CleanupCategory: String, CaseIterable, Identifiable {
         case .downloads:     return "Old or large files, reviewed individually — never auto-selected"
         case .trash:         return "Empty Trash — nowhere further to trash this to"
         case .deepScan:      return "Documents, Desktop, Pictures, Movies — large files only, on demand"
+        case .appCleaner:    return "Installed apps and their exact-bundle-ID-matched leftovers, on demand"
         }
     }
 
@@ -57,6 +61,7 @@ enum CleanupCategory: String, CaseIterable, Identifiable {
         case .downloads:     return Color(light: "#eda100", dark: "#c98500")  // slot 4 · yellow
         case .trash:         return Color(light: "#e87ba4", dark: "#d55181") // slot 5 · magenta
         case .deepScan:      return Color(light: "#008300", dark: "#008300")  // slot 6 · green
+        case .appCleaner:    return Color(light: "#7a5cd6", dark: "#9478e8")  // slot 7 · purple
         }
     }
 }

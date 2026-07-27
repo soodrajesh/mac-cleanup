@@ -88,6 +88,16 @@ open /Applications/DiskSweeper.app
   results persist across launches (with a "Scanned n ago" timestamp and a
   "Scan Again" button), so reopening the app doesn't mean re-paying the scan
   cost just to see what you already saw.
+- **App Cleaner** — lists apps in `/Applications` (and `~/Applications`) with
+  their leftover files: Preferences, Saved Application State, Containers,
+  Application Support, Logs, and cached web data. Every leftover is matched
+  to its app by **exact bundle ID** (or, for the couple of locations
+  conventionally keyed by name, the app's exact display name) — never a
+  fuzzy or substring search across `~/Library`. Apple's own apps
+  (`com.apple.*`) and anything currently running are never listed, so
+  there's no path to trashing something mid-use or touching a system app.
+  Every path is under `~/Library`/`/Applications` — nothing needs `sudo`.
+  Every result is `.caution`, like Deep Scan. **Opt-in**, same as Deep Scan.
 - **Filter within a category** — any category with more than a handful of
   items gets a "Filter by name or path" box (most relevant on Deep Scan,
   where results can run long) that narrows the list live as you type.
@@ -107,7 +117,7 @@ a large `DerivedData` folder.
 
 ## Navigation
 
-The six categories live behind a horizontal tab strip rather than one long
+The seven categories live behind a horizontal tab strip rather than one long
 stacked list — click a tab, see just that category. Above the tabs, a
 collapsible **Overview** panel gives a live-updating snapshot: a single
 segmented storage bar showing space by category (a part-to-whole comparison,
@@ -126,17 +136,18 @@ continuous scroll, so nothing is ever capped or hidden to force a fit.
 
 | Shortcut | Action |
 | --- | --- |
-| `⌘1`–`⌘6` | Jump to a tab (Caches, Dev Tools, Browser, Downloads, Trash, Deep Scan) |
+| `⌘1`–`⌘7` | Jump to a tab (Caches, Dev Tools, Browser, Downloads, Trash, Deep Scan, Apps) |
 | `⌘R` | Rescan all categories |
 | `⌘⇧A` | Select All Safe in the current tab |
 | `⌘⌫` | Move Selected to Trash |
 
 ## Testing
 
-The algorithmically interesting logic — Deep Scan's folder-vs-file selection
-and Homebrew's formula-name parsing — has regression coverage in `Tests/`,
-run directly against the real service files (no XCTest, no Xcode project or
-SwiftPM package, matching the rest of this project's `swiftc`-only build):
+The algorithmically interesting logic — Deep Scan's folder-vs-file selection,
+Homebrew's formula-name parsing, and App Cleaner's leftover-path lookups —
+has regression coverage in `Tests/`, run directly against the real service
+files (no XCTest, no Xcode project or SwiftPM package, matching the rest of
+this project's `swiftc`-only build):
 
 ```bash
 Tests/run_tests.sh
@@ -150,19 +161,19 @@ Sources/
   Services/  SizeCalculator, TrashService, DiskInfoService,
              CacheScanService, DevToolScanService, BrewService,
              DockerService, BrowserScanService, DownloadsScanService,
-             DeepScanService
+             DeepScanService, DeepScanCache, AppCleanerService
   Views/     MainView, OverviewView, CategorySectionView, ItemRowView,
              CLIActionRowView, TrashHeaderView, DeepScanStartView,
-             ConfirmDeletionSheet, DeletionProgressView
+             AppCleanerStartView, ConfirmDeletionSheet, DeletionProgressView
   Components/ SweepModel, SelectionFooterBar
 ```
 
 ## Ideas for later
 
-Duplicate-file finder, language/localization stripping, app-uninstaller with
-orphaned-preference cleanup, iOS backups, Time Machine local snapshots, Mail
-attachments, a cross-project `node_modules` sweeper, custom user-chosen Deep
-Scan folders.
+Duplicate-file finder, language/localization stripping, iOS backups, Time
+Machine local snapshots, Mail attachments, a cross-project `node_modules`
+sweeper, custom user-chosen Deep Scan folders, Group Container matching for
+App Cleaner (skipped in the MVP — group IDs don't reliably equal bundle IDs).
 
 ## License
 

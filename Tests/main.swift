@@ -96,6 +96,37 @@ expectEqual(BrewService.formulaName(fromPath: "/opt/homebrew/Cache/wget_bottle--
 expectEqual(BrewService.formulaName(fromPath: "/some/random/path/file.txt"),
             nil, "no Cellar/Caskroom and no -- separator → unrecognized, nil")
 
+// MARK: - AppCleanerService.leftoverCandidates
+
+do {
+    // Exact bundle-ID lookups only — every path is deterministic, no
+    // fuzzy/substring search across ~/Library.
+    let candidates = AppCleanerService.leftoverCandidates(
+        bundleID: "com.example.Widget", displayName: "Widget", home: "/Users/x")
+    let paths = candidates.map(\.path)
+    expect(paths.contains("/Users/x/Library/Preferences/com.example.Widget.plist"),
+           "Preferences path keyed by exact bundle ID")
+    expect(paths.contains("/Users/x/Library/Containers/com.example.Widget"),
+           "Container path keyed by exact bundle ID")
+    expect(paths.contains("/Users/x/Library/Application Support/Widget"),
+           "Application Support also checked under the exact display name")
+    expect(paths.contains("/Users/x/Library/Logs/Widget"),
+           "Logs path keyed by exact display name")
+    expectEqual(paths.count, Set(paths).count, "no duplicate candidate paths")
+}
+
+do {
+    // When the display name equals the bundle ID there's nothing distinct
+    // to key the name-based locations by — those two candidates should be
+    // skipped rather than duplicating the bundle-ID-keyed ones.
+    let candidates = AppCleanerService.leftoverCandidates(
+        bundleID: "Widget", displayName: "Widget", home: "/Users/x")
+    let paths = candidates.map(\.path)
+    expect(!paths.contains("/Users/x/Library/Logs/Widget"),
+           "name-keyed Logs candidate skipped when name == bundle ID")
+    expectEqual(paths.count, Set(paths).count, "still no duplicate candidate paths")
+}
+
 // MARK: - Report
 
 if failures == 0 {
