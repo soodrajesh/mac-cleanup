@@ -1,22 +1,18 @@
 import SwiftUI
 
-/// An expandable section for one cleanup category — live-updating total as
-/// sizes stream in, "Select All Safe", and the item list. Dev Tool Caches
-/// additionally splits out its three CLI-native subsections (simulators,
-/// Homebrew, Docker), each with its own action separate from the generic
-/// Trash flow.
+/// One category's full content — live-updating total as sizes stream in,
+/// "Select All Safe", and the item list. Shown as the active tab's detail in
+/// `MainView`, so it's always fully expanded (no per-section collapse —
+/// switching tabs already handles showing one category at a time). Dev Tool
+/// Caches additionally splits out its three CLI-native subsections
+/// (simulators, Homebrew, Docker), each with its own action separate from
+/// the generic Trash flow.
 struct CategorySectionView: View {
     @EnvironmentObject var model: SweepModel
     let category: CleanupCategory
 
-    @AppStorage private var isCollapsed: Bool
     @State private var showSimctlConfirm = false
     @State private var showBrewConfirm = false
-
-    init(category: CleanupCategory) {
-        self.category = category
-        _isCollapsed = AppStorage(wrappedValue: false, "collapsed.\(category.rawValue)")
-    }
 
     private var result: ScanResult? { model.results[category] }
 
@@ -32,31 +28,29 @@ struct CategorySectionView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             header
-            if !isCollapsed {
-                if category == .trash {
-                    TrashHeaderView().padding(.leading, 4)
-                } else if category == .deepScan && result == nil {
-                    DeepScanStartView().padding(.leading, 4)
-                } else {
-                    VStack(spacing: 0) {
-                        if result?.isScanning == true && (result?.items.isEmpty ?? true) {
-                            HStack { ProgressView().controlSize(.small); Text("Scanning…").foregroundStyle(.secondary) }
-                                .padding(.vertical, 8)
-                        } else if trashItems.isEmpty && simctlItems.isEmpty && brewItems.isEmpty && dockerItems.isEmpty {
-                            Text("Nothing found").font(.caption).foregroundStyle(.secondary).padding(.vertical, 8)
-                        }
-
-                        ForEach(trashItems) { item in
-                            ItemRowView(item: item)
-                            Divider()
-                        }
-
-                        if !simctlItems.isEmpty { simctlSection }
-                        if !brewItems.isEmpty { brewSection }
-                        if !dockerItems.isEmpty { dockerSection }
+            if category == .trash {
+                TrashHeaderView().padding(.leading, 4)
+            } else if category == .deepScan && result == nil {
+                DeepScanStartView().padding(.leading, 4)
+            } else {
+                VStack(spacing: 0) {
+                    if result?.isScanning == true && (result?.items.isEmpty ?? true) {
+                        HStack { ProgressView().controlSize(.small); Text("Scanning…").foregroundStyle(.secondary) }
+                            .padding(.vertical, 8)
+                    } else if trashItems.isEmpty && simctlItems.isEmpty && brewItems.isEmpty && dockerItems.isEmpty {
+                        Text("Nothing found").font(.caption).foregroundStyle(.secondary).padding(.vertical, 8)
                     }
-                    .padding(.leading, 4)
+
+                    ForEach(trashItems) { item in
+                        ItemRowView(item: item)
+                        Divider()
+                    }
+
+                    if !simctlItems.isEmpty { simctlSection }
+                    if !brewItems.isEmpty { brewSection }
+                    if !dockerItems.isEmpty { dockerSection }
                 }
+                .padding(.leading, 4)
             }
         }
         .padding(10)
@@ -64,39 +58,30 @@ struct CategorySectionView: View {
     }
 
     private var header: some View {
-        Button {
-            isCollapsed.toggle()
-        } label: {
-            HStack {
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 10, weight: .bold))
-                    .rotationEffect(.degrees(isCollapsed ? 0 : 90))
-                Image(systemName: category.symbol)
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(category.rawValue).font(.headline)
-                    Text(category.subtitle).font(.caption).foregroundStyle(.secondary)
-                }
-                Spacer()
-                // The Trash category has no itemized scan — TrashHeaderView
-                // fetches and shows its own real total below.
-                if category != .trash, let result {
-                    if result.isScanning { ProgressView().controlSize(.small) }
-                    Text(result.totalBytes.humanBytes).monospacedDigit().foregroundStyle(.secondary)
-                }
-                if hasSafeItems {
-                    Button("Select All Safe") { model.selectAllSafe(in: category) }
-                        .buttonStyle(.borderless)
-                        .font(.caption)
-                }
-                if category == .deepScan && result != nil {
-                    Button("Scan Again") { model.scan(.deepScan) }
-                        .buttonStyle(.borderless)
-                        .font(.caption)
-                }
+        HStack {
+            Image(systemName: category.symbol)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(category.rawValue).font(.headline)
+                Text(category.subtitle).font(.caption).foregroundStyle(.secondary)
             }
-            .contentShape(Rectangle())
+            Spacer()
+            // The Trash category has no itemized scan — TrashHeaderView
+            // fetches and shows its own real total below.
+            if category != .trash, let result {
+                if result.isScanning { ProgressView().controlSize(.small) }
+                Text(result.totalBytes.humanBytes).monospacedDigit().foregroundStyle(.secondary)
+            }
+            if hasSafeItems {
+                Button("Select All Safe") { model.selectAllSafe(in: category) }
+                    .buttonStyle(.borderless)
+                    .font(.caption)
+            }
+            if category == .deepScan && result != nil {
+                Button("Scan Again") { model.scan(.deepScan) }
+                    .buttonStyle(.borderless)
+                    .font(.caption)
+            }
         }
-        .buttonStyle(.plain)
         .padding(.vertical, 4)
     }
 

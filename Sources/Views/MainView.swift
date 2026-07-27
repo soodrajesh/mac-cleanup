@@ -5,19 +5,18 @@ struct MainView: View {
     @State private var showConfirmSheet = false
     @State private var showProgressSheet = false
     @State private var diskStats: DiskInfoService.VolumeStats?
+    @State private var selectedCategory: CleanupCategory = .systemCaches
 
     var body: some View {
         VStack(spacing: 0) {
             header
             Divider()
+            OverviewView().padding([.horizontal, .top])
+            categoryTabs.padding(.horizontal)
+            Divider().padding(.top, 8)
             ScrollView {
-                VStack(spacing: 12) {
-                    OverviewView()
-                    ForEach(CleanupCategory.allCases) { category in
-                        CategorySectionView(category: category)
-                    }
-                }
-                .padding()
+                CategorySectionView(category: selectedCategory)
+                    .padding()
             }
             Divider()
             SelectionFooterBar(showConfirm: $showConfirmSheet)
@@ -52,5 +51,16 @@ struct MainView: View {
             }
         }
         .padding()
+    }
+
+    private var categoryTabs: some View {
+        Picker("", selection: $selectedCategory) {
+            ForEach(CleanupCategory.allCases) { category in
+                Label(category.tabLabel, systemImage: category.symbol).tag(category)
+            }
+        }
+        .pickerStyle(.segmented)
+        .labelsHidden()
+        .padding(.vertical, 8)
     }
 }

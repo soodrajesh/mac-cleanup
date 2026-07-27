@@ -10,6 +10,20 @@ enum CleanupCategory: String, CaseIterable, Identifiable {
 
     var id: String { rawValue }
 
+    /// Short label for the horizontal tab strip — `rawValue` is used
+    /// everywhere else (the category's own header, Overview legend), but
+    /// "System & App Caches" doesn't fit six-wide in a segmented control.
+    var tabLabel: String {
+        switch self {
+        case .systemCaches:  return "Caches"
+        case .devTools:      return "Dev Tools"
+        case .browserCaches: return "Browser"
+        case .downloads:     return "Downloads"
+        case .trash:         return "Trash"
+        case .deepScan:      return "Deep Scan"
+        }
+    }
+
     var symbol: String {
         switch self {
         case .systemCaches:  return "internaldrive"

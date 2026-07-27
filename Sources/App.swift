@@ -8,7 +8,7 @@ struct DiskSweeperApp: App {
         WindowGroup {
             MainView()
                 .environmentObject(model)
-                .frame(minWidth: 620, minHeight: 520)
+                .frame(minWidth: 680, minHeight: 640)
                 .onAppear { model.scanAll() }
         }
         .windowResizability(.contentMinSize)
