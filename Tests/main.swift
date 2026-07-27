@@ -127,6 +127,29 @@ do {
     expectEqual(paths.count, Set(paths).count, "still no duplicate candidate paths")
 }
 
+// MARK: - AppCleanerService orphan detection
+
+expect(AppCleanerService.looksLikeBundleID("com.example.Widget"), "three-segment reverse-DNS name looks like a bundle ID")
+expect(AppCleanerService.looksLikeBundleID("com.example.sub.Widget"), "more than three segments still looks like a bundle ID")
+expect(!AppCleanerService.looksLikeBundleID("Widget"), "a bare name has no dots — not bundle-ID-shaped")
+expect(!AppCleanerService.looksLikeBundleID("com.example"), "only two segments — too short to be a real bundle ID")
+expect(!AppCleanerService.looksLikeBundleID("com..example.Widget"), "an empty segment (double dot) is rejected")
+expect(!AppCleanerService.looksLikeBundleID("com.example.Wid get"), "a space isn't a valid bundle ID character")
+expect(AppCleanerService.looksLikeBundleID("com.example-corp.My_Widget"), "hyphens and underscores are valid within a segment")
+
+do {
+    let found: Set<String> = [
+        "com.adobe.OldApp",          // not installed, bundle-ID-shaped → orphan
+        "com.example.StillHere",     // installed → not an orphan
+        "com.apple.something",       // Apple's own → never flagged, even if not installed
+        "TemporaryItems",            // not bundle-ID-shaped → ignored
+        "com.example",               // too short → ignored
+    ]
+    let installed: Set<String> = ["com.example.StillHere"]
+    let orphans = AppCleanerService.orphanBundleIDs(foundNames: found, installedBundleIDs: installed)
+    expectEqual(orphans, ["com.adobe.OldApp"], "only the not-installed, bundle-ID-shaped, non-Apple name is flagged as orphaned")
+}
+
 // MARK: - SizeCalculator timeout guard
 
 do {

@@ -98,6 +98,15 @@ open /Applications/DiskSweeper.app
   there's no path to trashing something mid-use or touching a system app.
   Every path is under `~/Library`/`/Applications` — nothing needs `sudo`.
   Every result is `.caution`, like Deep Scan. **Opt-in**, same as Deep Scan.
+  Also surfaces **orphaned data** — leftovers with no installed app to match
+  them, e.g. from something dragged to Trash via Finder directly (which only
+  ever removes the app bundle, never these locations). Found by reversing
+  the normal direction: scanning the bundle-ID-keyed leftover locations for
+  names that look like a real bundle ID (reverse-DNS shape) but match no
+  currently-installed app, skipping Apple's own IDs outright. Labeled
+  "Orphaned: `<bundle ID>` — ..." and carries extra-hedged copy, since
+  there's no live app to confirm against — it might belong to something
+  installed outside `/Applications`, not just something already gone.
 - **Filter within a category** — any category with more than a handful of
   items gets a "Filter by name or path" box (most relevant on Deep Scan,
   where results can run long) that narrows the list live as you type.

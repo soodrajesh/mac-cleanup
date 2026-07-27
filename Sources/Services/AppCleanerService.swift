@@ -38,11 +38,17 @@ enum AppCleanerService {
         if fm.fileExists(atPath: userApps) { appRoots.append(userApps) }
 
         var items: [ScanItem] = []
+        var installedBundleIDs = Set<String>()
         for root in appRoots {
             guard let entries = try? fm.contentsOfDirectory(atPath: root) else { continue }
             for entry in entries where entry.hasSuffix(".app") {
                 let appURL = URL(fileURLWithPath: root).appendingPathComponent(entry)
                 guard let bundle = Bundle(url: appURL), let bundleID = bundle.bundleIdentifier else { continue }
+                // Tracked before the Apple/running guards below, so the
+                // orphan pass never mistakes a currently-installed Apple or
+                // running app's own data for something left behind by an
+                // app that's actually gone.
+                installedBundleIDs.insert(bundleID)
                 guard !bundleID.hasPrefix("com.apple.") else { continue }
                 guard !runningBundleIDs.contains(bundleID) else { continue }
 
@@ -66,7 +72,87 @@ enum AppCleanerService {
                 }
             }
         }
+        items += orphanedLeftoverItems(installedBundleIDs: installedBundleIDs, home: home.path)
         return items
+    }
+
+    /// The subtitle on every orphan row — deliberately more hedged than a
+    /// matched app's leftovers, since there's no installed app to confirm
+    /// against: the bundle ID might belong to something removed via
+    /// Finder, or to an app installed somewhere this scan doesn't look.
+    private static let orphanSubtitle =
+        "No installed app matches this bundle ID — likely left behind by an app removed outside DiskSweeper. Review carefully."
+
+    /// Finds leftover data with no installed app to match it — left behind
+    /// when an app is dragged to Trash from Finder directly (which only
+    /// ever removes the app bundle, never its Preferences/Container/etc.)
+    /// rather than through this tool. Reverses the normal direction: instead
+    /// of "app → its leftovers," this is "leftover-shaped name → no app
+    /// claims it." Deliberately narrower than the installed-app path —
+    /// only the locations keyed strictly by bundle ID are checked, never
+    /// the name-keyed ones (Application Support/Logs by display name),
+    /// since there's no live app to read an exact display name from.
+    private static func orphanedLeftoverItems(installedBundleIDs: Set<String>, home: String) -> [ScanItem] {
+        let fm = FileManager.default
+
+        func childNames(of dir: String, stripExtension ext: String?) -> Set<String> {
+            guard let entries = try? fm.contentsOfDirectory(atPath: dir) else { return [] }
+            guard let ext else { return Set(entries) }
+            return Set(entries.compactMap { $0.hasSuffix(".\(ext)") ? String($0.dropLast(ext.count + 1)) : nil })
+        }
+
+        let prefsDir = "\(home)/Library/Preferences"
+        let savedStateDir = "\(home)/Library/Saved Application State"
+        let containersDir = "\(home)/Library/Containers"
+        let httpStoragesDir = "\(home)/Library/HTTPStorages"
+        let webkitDir = "\(home)/Library/WebKit"
+
+        var found: Set<String> = []
+        found.formUnion(childNames(of: prefsDir, stripExtension: "plist"))
+        found.formUnion(childNames(of: savedStateDir, stripExtension: "savedState"))
+        found.formUnion(childNames(of: containersDir, stripExtension: nil))
+        found.formUnion(childNames(of: httpStoragesDir, stripExtension: nil))
+        found.formUnion(childNames(of: webkitDir, stripExtension: nil))
+
+        var items: [ScanItem] = []
+        for bundleID in orphanBundleIDs(foundNames: found, installedBundleIDs: installedBundleIDs).sorted() {
+            let candidates: [(label: String, path: String)] = [
+                ("Preferences", "\(prefsDir)/\(bundleID).plist"),
+                ("Saved State", "\(savedStateDir)/\(bundleID).savedState"),
+                ("Container", "\(containersDir)/\(bundleID)"),
+                ("Website Data", "\(httpStoragesDir)/\(bundleID)"),
+                ("WebKit Data", "\(webkitDir)/\(bundleID)"),
+            ]
+            for candidate in candidates {
+                guard fm.fileExists(atPath: candidate.path) else { continue }
+                items.append(ScanItem(
+                    url: URL(fileURLWithPath: candidate.path),
+                    displayName: "Orphaned: \(bundleID) — \(candidate.label)",
+                    subtitle: orphanSubtitle,
+                    status: .measuring, isDirectory: true, lastAccessed: nil,
+                    safety: .caution, removal: .trash))
+            }
+        }
+        return items
+    }
+
+    /// Pure filter: which found names both look like a real bundle ID
+    /// (reverse-DNS shape — at least three dot-separated segments, no
+    /// stray characters) and have no currently-installed app claiming
+    /// them. Never Apple's own, matched or not. Pure and file-system-free
+    /// so it's directly testable.
+    static func orphanBundleIDs(foundNames: Set<String>, installedBundleIDs: Set<String>) -> Set<String> {
+        foundNames.filter { name in
+            looksLikeBundleID(name) && !name.hasPrefix("com.apple.") && !installedBundleIDs.contains(name)
+        }
+    }
+
+    static func looksLikeBundleID(_ name: String) -> Bool {
+        let segments = name.split(separator: ".", omittingEmptySubsequences: false)
+        guard segments.count >= 3 else { return false }
+        return segments.allSatisfy { segment in
+            !segment.isEmpty && segment.allSatisfy { $0.isLetter || $0.isNumber || $0 == "-" || $0 == "_" }
+        }
     }
 
     /// Every leftover location this app checks, and why each one is safe to
