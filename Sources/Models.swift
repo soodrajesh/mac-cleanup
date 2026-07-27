@@ -6,6 +6,7 @@ enum CleanupCategory: String, CaseIterable, Identifiable {
     case browserCaches = "Browser Caches"
     case downloads = "Downloads"
     case trash = "Trash"
+    case deepScan = "Deep Scan"
 
     var id: String { rawValue }
 
@@ -16,6 +17,7 @@ enum CleanupCategory: String, CaseIterable, Identifiable {
         case .browserCaches: return "safari"
         case .downloads:     return "arrow.down.circle"
         case .trash:         return "trash"
+        case .deepScan:      return "doc.text.magnifyingglass"
         }
     }
 
@@ -26,6 +28,7 @@ enum CleanupCategory: String, CaseIterable, Identifiable {
         case .browserCaches: return "Cache data only — never history, passwords, or cookies"
         case .downloads:     return "Old or large files, reviewed individually — never auto-selected"
         case .trash:         return "Empty Trash — nowhere further to trash this to"
+        case .deepScan:      return "Documents, Desktop, Pictures, Movies — large files only, on demand"
         }
     }
 
@@ -39,6 +42,7 @@ enum CleanupCategory: String, CaseIterable, Identifiable {
         case .browserCaches: return Color(light: "#1baf7a", dark: "#199e70")  // slot 3 · aqua
         case .downloads:     return Color(light: "#eda100", dark: "#c98500")  // slot 4 · yellow
         case .trash:         return Color(light: "#e87ba4", dark: "#d55181") // slot 5 · magenta
+        case .deepScan:      return Color(light: "#008300", dark: "#008300")  // slot 6 · green
         }
     }
 }

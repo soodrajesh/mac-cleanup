@@ -22,7 +22,10 @@ final class SweepModel: ObservableObject {
     private var deletionTask: Task<Void, Never>?
 
     func scanAll() {
-        for category in CleanupCategory.allCases {
+        // Deep Scan looks at actual personal content (Documents, Desktop,
+        // Pictures, Movies) rather than disposable cache — it only runs
+        // when explicitly started, never automatically.
+        for category in CleanupCategory.allCases where category != .deepScan {
             scan(category)
         }
         refreshTrashSize()
@@ -81,6 +84,7 @@ final class SweepModel: ObservableObject {
         case .browserCaches: return BrowserScanService.listItems
         case .downloads:     return DownloadsScanService.listItems
         case .trash:         return { [] }  // aggregate stat only — rendered by TrashHeaderView, not itemized
+        case .deepScan:      return DeepScanService.listItems
         }
     }
 

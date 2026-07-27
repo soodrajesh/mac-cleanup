@@ -68,9 +68,21 @@ open /Applications/DiskSweeper.app
   (90+ days since last use) and/or large (100MB+) — never auto-deleted,
   always reviewed like everything else. Its own category, separate from
   Trash.
-- **Trash** — current Trash size with its own Empty Trash action. Not
+- **Trash** — current Trash size with its own Empty Trash action. Aggregates
+  every Trash location on the Mac (`~/.Trash` plus each volume's root-level
+  `/.Trashes/<uid>`), matching what Finder's Trash window shows. Not
   itemized (it's already the safe zone); its own category, separate from
   Downloads.
+- **Deep Scan** — the one category that looks at actual personal content:
+  recursively scans Documents, Desktop, Pictures, and Movies for individual
+  files at or above 200MB. No age check (an old file in these folders is
+  often exactly the one you meant to keep), and every result is `.caution`.
+  **Opt-in** — unlike every other category, it never runs automatically;
+  you start it explicitly from its own section.
+
+Every item row shows its full path (home-relative, e.g. `~/Downloads/x.zip`)
+alongside its size, so you always know exactly where something lives before
+deciding on it.
 
 Every scan runs concurrently and sizes items progressively (via `du`,
 bounded to a handful of processes at once) so the UI never blocks, even on
@@ -94,19 +106,20 @@ Sources/
   App.swift, Models.swift, Support.swift
   Services/  SizeCalculator, TrashService, DiskInfoService,
              CacheScanService, DevToolScanService, BrewService,
-             DockerService, BrowserScanService, DownloadsScanService
+             DockerService, BrowserScanService, DownloadsScanService,
+             DeepScanService
   Views/     MainView, OverviewView, CategorySectionView, ItemRowView,
-             CLIActionRowView, TrashHeaderView, ConfirmDeletionSheet,
-             DeletionProgressView
+             CLIActionRowView, TrashHeaderView, DeepScanStartView,
+             ConfirmDeletionSheet, DeletionProgressView
   Components/ SweepModel, SelectionFooterBar
 ```
 
 ## Ideas for later
 
-Duplicate-file finder, large-file-anywhere-on-disk scanner, language/
-localization stripping, app-uninstaller with orphaned-preference cleanup,
-iOS backups, Time Machine local snapshots, Mail attachments, a cross-project
-`node_modules` sweeper.
+Duplicate-file finder, language/localization stripping, app-uninstaller with
+orphaned-preference cleanup, iOS backups, Time Machine local snapshots, Mail
+attachments, a cross-project `node_modules` sweeper, custom user-chosen Deep
+Scan folders.
 
 ## License
 

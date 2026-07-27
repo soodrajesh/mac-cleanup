@@ -46,6 +46,19 @@ func revealInFinder(_ url: URL) {
     NSWorkspace.shared.activateFileViewerSelecting([url])
 }
 
+extension URL {
+    /// The full path with the home directory collapsed to `~`, so every
+    /// item row can show exactly where a file lives without the noise of a
+    /// long absolute path.
+    var abbreviatedPath: String {
+        let home = FileManager.default.homeDirectoryForCurrentUser.path
+        if path.hasPrefix(home) {
+            return "~" + path.dropFirst(home.count)
+        }
+        return path
+    }
+}
+
 /// Locates an optional CLI tool by probing the usual Homebrew/manual-install
 /// locations, then falling back to `PATH`. Returns nil if not found, so
 /// callers can hide the relevant subsection gracefully instead of erroring.

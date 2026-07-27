@@ -24,6 +24,10 @@ struct CategorySectionView: View {
     private var simctlItems: [ScanItem] { (result?.items ?? []).filter { $0.removal == .cliNative(toolName: "simctl") } }
     private var brewItems: [ScanItem] { (result?.items ?? []).filter { $0.removal == .cliNative(toolName: "brew") } }
     private var dockerItems: [ScanItem] { (result?.items ?? []).filter { $0.removal == .cliNative(toolName: "docker") } }
+    /// Downloads and Deep Scan are 100% `.caution` by design, so "Select All
+    /// Safe" would silently select nothing there — only show it where it
+    /// can actually do something.
+    private var hasSafeItems: Bool { trashItems.contains { $0.safety == .safe } }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -31,6 +35,8 @@ struct CategorySectionView: View {
             if !isCollapsed {
                 if category == .trash {
                     TrashHeaderView().padding(.leading, 4)
+                } else if category == .deepScan && result == nil {
+                    DeepScanStartView().padding(.leading, 4)
                 } else {
                     VStack(spacing: 0) {
                         if result?.isScanning == true && (result?.items.isEmpty ?? true) {
@@ -77,8 +83,13 @@ struct CategorySectionView: View {
                     if result.isScanning { ProgressView().controlSize(.small) }
                     Text(result.totalBytes.humanBytes).monospacedDigit().foregroundStyle(.secondary)
                 }
-                if !trashItems.isEmpty {
+                if hasSafeItems {
                     Button("Select All Safe") { model.selectAllSafe(in: category) }
+                        .buttonStyle(.borderless)
+                        .font(.caption)
+                }
+                if category == .deepScan && result != nil {
+                    Button("Scan Again") { model.scan(.deepScan) }
                         .buttonStyle(.borderless)
                         .font(.caption)
                 }
