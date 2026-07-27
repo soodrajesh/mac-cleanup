@@ -13,17 +13,31 @@ struct CategorySectionView: View {
 
     @State private var showSimctlConfirm = false
     @State private var showBrewConfirm = false
+    @State private var searchText = ""
 
     private var result: ScanResult? { model.results[category] }
 
-    private var trashItems: [ScanItem] { (result?.items ?? []).filter { $0.removal == .trash } }
+    private var allTrashItems: [ScanItem] { (result?.items ?? []).filter { $0.removal == .trash } }
+    /// Filters by name, subtitle, or path — a category like Deep Scan can run
+    /// long, so narrowing by typed text beats scrolling the whole list.
+    private var trashItems: [ScanItem] {
+        guard !searchText.isEmpty else { return allTrashItems }
+        return allTrashItems.filter {
+            $0.displayName.localizedCaseInsensitiveContains(searchText)
+                || ($0.subtitle?.localizedCaseInsensitiveContains(searchText) ?? false)
+                || $0.url.path.localizedCaseInsensitiveContains(searchText)
+        }
+    }
     private var simctlItems: [ScanItem] { (result?.items ?? []).filter { $0.removal == .cliNative(toolName: "simctl") } }
     private var brewItems: [ScanItem] { (result?.items ?? []).filter { $0.removal == .cliNative(toolName: "brew") } }
     private var dockerItems: [ScanItem] { (result?.items ?? []).filter { $0.removal == .cliNative(toolName: "docker") } }
     /// Downloads and Deep Scan are 100% `.caution` by design, so "Select All
     /// Safe" would silently select nothing there — only show it where it
     /// can actually do something.
-    private var hasSafeItems: Bool { trashItems.contains { $0.safety == .safe } }
+    private var hasSafeItems: Bool { allTrashItems.contains { $0.safety == .safe } }
+    /// Only worth showing a filter box once there's enough to actually
+    /// scroll through — a handful of rows doesn't need one.
+    private var showsSearch: Bool { allTrashItems.count > 6 }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -37,8 +51,16 @@ struct CategorySectionView: View {
                     if result?.isScanning == true && (result?.items.isEmpty ?? true) {
                         HStack { ProgressView().controlSize(.small); Text("Scanning…").foregroundStyle(.secondary) }
                             .padding(.vertical, 8)
-                    } else if trashItems.isEmpty && simctlItems.isEmpty && brewItems.isEmpty && dockerItems.isEmpty {
-                        Text("Nothing found").font(.caption).foregroundStyle(.secondary).padding(.vertical, 8)
+                    } else if showsSearch {
+                        searchField
+                    }
+
+                    if !(result?.isScanning == true && (result?.items.isEmpty ?? true)) {
+                        if allTrashItems.isEmpty && simctlItems.isEmpty && brewItems.isEmpty && dockerItems.isEmpty {
+                            Text("Nothing found").font(.caption).foregroundStyle(.secondary).padding(.vertical, 8)
+                        } else if trashItems.isEmpty && !searchText.isEmpty {
+                            Text("No items match \u{201c}\(searchText)\u{201d}").font(.caption).foregroundStyle(.secondary).padding(.vertical, 8)
+                        }
                     }
 
                     ForEach(trashItems) { item in
@@ -75,14 +97,41 @@ struct CategorySectionView: View {
                 Button("Select All Safe") { model.selectAllSafe(in: category) }
                     .buttonStyle(.borderless)
                     .font(.caption)
+                    .keyboardShortcut("a", modifiers: [.command, .shift])
+                    .help("Select all safe items (⌘⇧A)")
             }
             if category == .deepScan && result != nil {
+                if result?.isScanning == false, let lastRun = model.deepScanLastRun {
+                    Text("Scanned \(lastRun.relativeDescription)")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
                 Button("Scan Again") { model.scan(.deepScan) }
                     .buttonStyle(.borderless)
                     .font(.caption)
             }
         }
         .padding(.vertical, 4)
+    }
+
+    private var searchField: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
+            TextField("Filter by name or path", text: $searchText)
+                .textFieldStyle(.plain)
+            if !searchText.isEmpty {
+                Button {
+                    searchText = ""
+                } label: {
+                    Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 5)
+        .background(RoundedRectangle(cornerRadius: 6).fill(Color.gray.opacity(0.1)))
+        .padding(.bottom, 6)
     }
 
     private var simctlSection: some View {

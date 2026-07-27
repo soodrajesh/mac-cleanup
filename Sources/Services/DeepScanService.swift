@@ -46,17 +46,42 @@ enum DeepScanService {
     /// double-report the same bytes).
     private static func scan(root: URL, label: String) -> [ScanItem] {
         guard let sizes = duAll(root) else { return [] }
+        let paths = selectCandidates(sizes: sizes, rootPath: root.path)
+        return paths.compactMap { path in
+            guard let size = sizes[path] else { return nil }
+            let url = URL(fileURLWithPath: path)
+            var isDir: ObjCBool = false
+            FileManager.default.fileExists(atPath: path, isDirectory: &isDir)
+            return ScanItem(
+                url: url,
+                displayName: url.lastPathComponent,
+                subtitle: "\(label)\(isDir.boolValue ? " · Folder" : "") · \(size.humanBytes)",
+                status: .sized(size),
+                isDirectory: isDir.boolValue,
+                lastAccessed: nil,
+                safety: .caution,
+                removal: .trash)
+        }
+    }
 
+    /// The pure selection algorithm, factored out of `scan(root:label:)` so
+    /// it can be exercised directly against a synthetic `du` map in tests —
+    /// no real filesystem needed. Given every path's size under `rootPath`
+    /// (as `du -a -k` would report them), returns just the paths worth
+    /// surfacing: at/above threshold, not inside a package/bundle, not
+    /// hidden, not explained away by their own large children, and not
+    /// already covered by a reported ancestor.
+    static func selectCandidates(sizes: [String: Int64], rootPath: String) -> [String] {
         let packagePaths = Set(sizes.keys.filter(isPackagePath))
         let excluded = Set(sizes.keys.filter { path in
             packagePaths.contains { pkg in path != pkg && path.hasPrefix(pkg + "/") }
         })
         let hidden = Set(sizes.keys.filter { path in
-            path.dropFirst(root.path.count).split(separator: "/").contains { $0.hasPrefix(".") }
+            path.dropFirst(rootPath.count).split(separator: "/").contains { $0.hasPrefix(".") }
         })
 
         let candidates = sizes.filter { path, size in
-            path != root.path && size >= sizeThresholdBytes
+            path != rootPath && size >= sizeThresholdBytes
                 && !excluded.contains(path) && !hidden.contains(path)
         }
 
@@ -69,7 +94,7 @@ enum DeepScanService {
         }
         func hasReportedAncestor(_ path: String) -> Bool {
             var current = (path as NSString).deletingLastPathComponent
-            while current.count > root.path.count {
+            while current.count > rootPath.count {
                 if let ancestorSize = candidates[current], !isExplainedByChildren(current, size: ancestorSize) {
                     return true
                 }
@@ -78,23 +103,11 @@ enum DeepScanService {
             return false
         }
 
-        var results: [ScanItem] = []
+        var results: [String] = []
         for (path, size) in candidates {
             if isExplainedByChildren(path, size: size) { continue }  // children represent it instead
             if hasReportedAncestor(path) { continue }                // an ancestor already represents this whole subtree
-
-            let url = URL(fileURLWithPath: path)
-            var isDir: ObjCBool = false
-            FileManager.default.fileExists(atPath: path, isDirectory: &isDir)
-            results.append(ScanItem(
-                url: url,
-                displayName: url.lastPathComponent,
-                subtitle: "\(label)\(isDir.boolValue ? " · Folder" : "") · \(size.humanBytes)",
-                status: .sized(size),
-                isDirectory: isDir.boolValue,
-                lastAccessed: nil,
-                safety: .caution,
-                removal: .trash))
+            results.append(path)
         }
         return results
     }

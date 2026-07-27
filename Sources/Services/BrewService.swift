@@ -62,8 +62,10 @@ enum BrewService {
     }
 
     /// `.../Cellar/<formula>/<version>/...` → formula. Cache tarballs are
-    /// named `<formula>--<version>...` → the segment before `--`.
-    private static func formulaName(fromPath path: String) -> String? {
+    /// named `<formula>--<version>...` → the segment before `--`. Internal
+    /// (not `private`) so the standalone test harness in `Tests/` can call
+    /// it directly against synthetic paths.
+    static func formulaName(fromPath path: String) -> String? {
         let components = path.split(separator: "/")
         if let cellarIdx = components.firstIndex(of: "Cellar"), cellarIdx + 1 < components.count {
             return String(components[cellarIdx + 1])

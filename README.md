@@ -84,7 +84,18 @@ open /Applications/DiskSweeper.app
   never *also* reported, so nothing double-counts. No age check (an old file
   in these folders is often exactly the one you meant to keep), and every
   result is `.caution`. **Opt-in** — unlike every other category, it never
-  runs automatically; you start it explicitly from its own section.
+  runs automatically; you start it explicitly from its own section. Its
+  results persist across launches (with a "Scanned n ago" timestamp and a
+  "Scan Again" button), so reopening the app doesn't mean re-paying the scan
+  cost just to see what you already saw.
+- **Filter within a category** — any category with more than a handful of
+  items gets a "Filter by name or path" box (most relevant on Deep Scan,
+  where results can run long) that narrows the list live as you type.
+- **Cross-category selection** — the checkbox selection is one flat set, not
+  scoped to whichever tab is open: check items in Downloads, switch to
+  Caches, check more, and "Move Selected to Trash" acts on all of it in one
+  batch. The footer names which tabs are involved whenever a selection spans
+  more than one, so this isn't a hidden capability.
 
 Every item row shows its full path (home-relative, e.g. `~/Downloads/x.zip`)
 alongside its size, so you always know exactly where something lives before
@@ -110,6 +121,26 @@ auto-collapses to a single line the moment you pick a tab, freeing up room
 for that category's content — toggle it back open anytime via its chevron.
 Everything (Overview, tabs, and the active category's list) sits in one
 continuous scroll, so nothing is ever capped or hidden to force a fit.
+
+## Keyboard shortcuts
+
+| Shortcut | Action |
+| --- | --- |
+| `⌘1`–`⌘6` | Jump to a tab (Caches, Dev Tools, Browser, Downloads, Trash, Deep Scan) |
+| `⌘R` | Rescan all categories |
+| `⌘⇧A` | Select All Safe in the current tab |
+| `⌘⌫` | Move Selected to Trash |
+
+## Testing
+
+The algorithmically interesting logic — Deep Scan's folder-vs-file selection
+and Homebrew's formula-name parsing — has regression coverage in `Tests/`,
+run directly against the real service files (no XCTest, no Xcode project or
+SwiftPM package, matching the rest of this project's `swiftc`-only build):
+
+```bash
+Tests/run_tests.sh
+```
 
 ## Layout
 

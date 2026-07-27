@@ -22,6 +22,7 @@ struct MainView: View {
                     OverviewView(isCollapsed: $isOverviewCollapsed)
                     categoryTabs
                     CategorySectionView(category: selectedCategory)
+                        .id(selectedCategory)
                 }
                 .padding()
             }
@@ -56,8 +57,25 @@ struct MainView: View {
             } label: {
                 Label("Rescan", systemImage: "arrow.clockwise")
             }
+            .keyboardShortcut("r", modifiers: .command)
+            .help("Rescan all categories (⌘R)")
         }
         .padding()
+        .background(tabShortcuts)
+    }
+
+    /// Cmd+1…6 jump straight to a tab — a segmented `Picker` has no built-in
+    /// per-segment shortcut, so these are invisible buttons wired to the same
+    /// selection state, sized to zero so they take no space or focus ring.
+    private var tabShortcuts: some View {
+        ForEach(Array(CleanupCategory.allCases.enumerated()), id: \.element) { index, category in
+            if index < 9 {
+                Button("") { selectedCategory = category }
+                    .keyboardShortcut(KeyEquivalent(Character("\(index + 1)")), modifiers: .command)
+                    .frame(width: 0, height: 0)
+                    .opacity(0)
+            }
+        }
     }
 
     private var categoryTabs: some View {

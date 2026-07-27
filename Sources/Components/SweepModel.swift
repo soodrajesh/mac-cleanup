@@ -18,8 +18,19 @@ final class SweepModel: ObservableObject {
     /// distinct from `trashBytes == nil` (which also means "not loaded yet")
     /// so the UI never silently shows "0" when the real answer is "can't tell".
     @Published var trashAccessDenied = false
+    /// When Deep Scan last actually ran — `nil` means never (this launch or
+    /// any prior one). Shown next to its results so a cached list isn't
+    /// mistaken for a fresh one.
+    @Published var deepScanLastRun: Date?
 
     private var deletionTask: Task<Void, Never>?
+
+    init() {
+        if let cached = DeepScanCache.load() {
+            results[.deepScan] = ScanResult(category: .deepScan, items: cached.items, isScanning: false)
+            deepScanLastRun = cached.scannedAt
+        }
+    }
 
     func scanAll() {
         // Deep Scan looks at actual personal content (Documents, Desktop,
@@ -33,11 +44,12 @@ final class SweepModel: ObservableObject {
 
     func refreshTrashSize() {
         Task.detached(priority: .utility) { [weak self] in
+            guard let self else { return }
             do {
                 let bytes = try TrashService.trashSize()
-                await MainActor.run { self?.trashBytes = bytes; self?.trashAccessDenied = false }
+                await MainActor.run { self.trashBytes = bytes; self.trashAccessDenied = false }
             } catch {
-                await MainActor.run { self?.trashBytes = nil; self?.trashAccessDenied = true }
+                await MainActor.run { self.trashBytes = nil; self.trashAccessDenied = true }
             }
         }
     }
@@ -73,6 +85,11 @@ final class SweepModel: ObservableObject {
                 guard var result = self.results[category] else { return }
                 result.isScanning = false
                 self.results[category] = result
+                if category == .deepScan {
+                    let now = Date()
+                    self.deepScanLastRun = now
+                    DeepScanCache.save(scannedAt: now, items: result.items)
+                }
             }
         }
     }
@@ -114,6 +131,16 @@ final class SweepModel: ObservableObject {
         selectedItems.reduce(0) { $0 + ($1.status.sizeIfKnown ?? 0) }
     }
 
+    /// Selection is a single flat set of IDs, not scoped per tab — you can
+    /// check items in one category, switch tabs, and check more, then trash
+    /// everything in one batch. Surfaced in the footer so that's discoverable
+    /// rather than a hidden capability.
+    var selectedCategories: [CleanupCategory] {
+        CleanupCategory.allCases.filter { category in
+            results[category]?.items.contains { selectedIDs.contains($0.id) } ?? false
+        }
+    }
+
     /// Homebrew items the user has checked — a separate action ("Run brew
     /// cleanup") from the generic Trash flow, since brew manages its own
     /// removal rather than going through Finder's Trash.
@@ -129,15 +156,17 @@ final class SweepModel: ObservableObject {
     /// call, so this is a single bulk action rather than a per-item one.
     func deleteUnavailableSimulators() {
         Task.detached(priority: .userInitiated) { [weak self] in
+            guard let self else { return }
             try? DevToolScanService.deleteUnavailableSimulators()
-            await MainActor.run { self?.scan(.devTools) }
+            await MainActor.run { self.scan(.devTools) }
         }
     }
 
     func pruneDocker(_ item: ScanItem) {
         Task.detached(priority: .userInitiated) { [weak self] in
+            guard let self else { return }
             try? DockerService.prune(label: item.displayName)
-            await MainActor.run { self?.scan(.devTools) }
+            await MainActor.run { self.scan(.devTools) }
         }
     }
 
@@ -165,15 +194,14 @@ final class SweepModel: ObservableObject {
         deletionTotal = items.count
         let total = Double(items.count)
         deletionTask = Task.detached(priority: .userInitiated) { [weak self] in
+            guard let self else { return }
             TrashService.moveToTrash(items, isCancelled: { false }) { index, outcome in
-                Task { @MainActor [weak self] in
-                    guard let self else { return }
+                Task { @MainActor in
                     self.deletionOutcomes.append(outcome)
                     self.deletionProgress = Double(index + 1) / total
                 }
             }
-            await MainActor.run { [weak self] in
-                guard let self else { return }
+            await MainActor.run {
                 self.isDeleting = false
                 let removedIDs = Set(self.deletionOutcomes.filter(\.success).map { $0.item.id })
                 self.selectedIDs.subtract(removedIDs)

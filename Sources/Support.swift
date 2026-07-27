@@ -32,9 +32,13 @@ extension Int64 {
 }
 
 extension Date {
-    /// "3 days ago", "2 months ago", etc.
+    /// "3 days ago", "2 months ago", "just now", etc. — `.named` style reads
+    /// naturally for both a scan from minutes ago and one from last week,
+    /// where `.numeric` would say the stilted "in 0 seconds".
     var relativeDescription: String {
-        RelativeDateTimeFormatter().localizedString(for: self, relativeTo: Date())
+        let formatter = RelativeDateTimeFormatter()
+        formatter.dateTimeStyle = .named
+        return formatter.localizedString(for: self, relativeTo: Date())
     }
 
     var daysAgo: Int {
