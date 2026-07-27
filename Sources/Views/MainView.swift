@@ -19,7 +19,7 @@ struct MainView: View {
             // off to force a fit.
             ScrollView {
                 VStack(spacing: 12) {
-                    OverviewView(isCollapsed: $isOverviewCollapsed)
+                    OverviewView(isCollapsed: $isOverviewCollapsed, diskStats: diskStats)
                     categoryTabs
                     CategorySectionView(category: selectedCategory)
                         .id(selectedCategory)

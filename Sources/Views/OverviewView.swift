@@ -7,6 +7,17 @@ import SwiftUI
 struct OverviewView: View {
     @EnvironmentObject var model: SweepModel
     @Binding var isCollapsed: Bool
+    /// For the "scanned vs. actually used" caption below — without this, a
+    /// user sees e.g. "84 GB scanned" next to "245 GB" total in the header
+    /// and reasonably assumes the bar accounts for the whole disk. It
+    /// doesn't: these categories are deliberately just caches, Downloads,
+    /// and a few content folders, not Applications or system files.
+    let diskStats: DiskInfoService.VolumeStats?
+
+    private var usedBytes: Int64? {
+        guard let diskStats else { return nil }
+        return diskStats.totalBytes - diskStats.freeBytes
+    }
 
     private var entries: [(category: CleanupCategory, bytes: Int64)] {
         CleanupCategory.allCases
@@ -46,6 +57,11 @@ struct OverviewView: View {
                 .buttonStyle(.plain)
 
                 if !isCollapsed {
+                    if let usedBytes, usedBytes > grandTotal {
+                        Text("Not the whole disk — \(usedBytes.humanBytes) is actually used. The rest is Applications, system files, and other locations DiskSweeper doesn't scan.")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
                     storageBar
                     legend
 
