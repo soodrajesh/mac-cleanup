@@ -14,6 +14,10 @@ final class SweepModel: ObservableObject {
     /// single source of truth — read by both `TrashHeaderView` and the
     /// Overview chart, rather than each fetching it independently.
     @Published var trashBytes: Int64?
+    /// True when `~/.Trash` can't be read (needs Full Disk Access) — kept
+    /// distinct from `trashBytes == nil` (which also means "not loaded yet")
+    /// so the UI never silently shows "0" when the real answer is "can't tell".
+    @Published var trashAccessDenied = false
 
     private var deletionTask: Task<Void, Never>?
 
@@ -26,8 +30,12 @@ final class SweepModel: ObservableObject {
 
     func refreshTrashSize() {
         Task.detached(priority: .utility) { [weak self] in
-            let bytes = TrashService.trashSize()
-            await MainActor.run { self?.trashBytes = bytes }
+            do {
+                let bytes = try TrashService.trashSize()
+                await MainActor.run { self?.trashBytes = bytes; self?.trashAccessDenied = false }
+            } catch {
+                await MainActor.run { self?.trashBytes = nil; self?.trashAccessDenied = true }
+            }
         }
     }
 

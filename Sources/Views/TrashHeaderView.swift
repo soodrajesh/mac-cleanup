@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 
 /// The entire body of the Trash category — its aggregate size (tracked by
 /// `SweepModel.trashBytes`, shared with the Overview chart) and its own
@@ -14,19 +15,34 @@ struct TrashHeaderView: View {
     @State private var errorMessage: String?
 
     var body: some View {
-        HStack {
-            if let trashBytes = model.trashBytes {
-                Text("\(trashBytes.humanBytes) currently in Trash").foregroundStyle(.secondary)
-            } else {
-                Text("Calculating…").foregroundStyle(.secondary)
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                if model.trashAccessDenied {
+                    Label("Can't read Trash contents", systemImage: "exclamationmark.triangle.fill")
+                        .foregroundStyle(.orange)
+                } else if let trashBytes = model.trashBytes {
+                    Text("\(trashBytes.humanBytes) currently in Trash").foregroundStyle(.secondary)
+                } else {
+                    Text("Calculating…").foregroundStyle(.secondary)
+                }
+                Spacer()
+                if isEmptying {
+                    ProgressView().controlSize(.small)
+                } else if !model.trashAccessDenied {
+                    Button("Empty Trash…") { showConfirm = true }
+                        .buttonStyle(.bordered)
+                        .disabled((model.trashBytes ?? 0) == 0)
+                }
             }
-            Spacer()
-            if isEmptying {
-                ProgressView().controlSize(.small)
-            } else {
-                Button("Empty Trash…") { showConfirm = true }
-                    .buttonStyle(.bordered)
-                    .disabled((model.trashBytes ?? 0) == 0)
+            if model.trashAccessDenied {
+                HStack {
+                    Text("macOS requires Full Disk Access to see what's in Trash — grant it, then relaunch DiskSweeper.")
+                        .font(.caption).foregroundStyle(.secondary)
+                    Spacer()
+                    Button("Open Privacy Settings…") { openFullDiskAccessSettings() }
+                        .buttonStyle(.link)
+                        .font(.caption)
+                }
             }
         }
         .padding(.vertical, 6)
@@ -57,5 +73,10 @@ struct TrashHeaderView: View {
                 errorMessage = error.localizedDescription
             }
         }
+    }
+
+    private func openFullDiskAccessSettings() {
+        guard let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles") else { return }
+        NSWorkspace.shared.open(url)
     }
 }
