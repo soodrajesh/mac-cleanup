@@ -52,17 +52,13 @@ struct OverviewView: View {
                     if !topItems.isEmpty {
                         Divider().padding(.vertical, 2)
                         Text("Largest Items").font(.subheadline).bold()
-                        // Capped and independently scrollable — Overview sits
-                        // pinned above the category tabs, so its own height
-                        // has to stay bounded rather than growing with up to
-                        // 10 rows.
-                        ScrollView {
-                            ForEach(topItems) { item in
-                                ItemRowView(item: item)
-                                if item.id != topItems.last?.id { Divider() }
-                            }
+                        // MainView wraps everything in one ScrollView, so
+                        // this doesn't need its own height cap — the full
+                        // list shows, and the page scrolls if it doesn't fit.
+                        ForEach(topItems) { item in
+                            ItemRowView(item: item)
+                            if item.id != topItems.last?.id { Divider() }
                         }
-                        .frame(height: 180)
                     }
                 }
             }

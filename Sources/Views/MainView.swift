@@ -12,19 +12,18 @@ struct MainView: View {
         VStack(spacing: 0) {
             header
             Divider()
-            OverviewView(isCollapsed: $isOverviewCollapsed).padding([.horizontal, .top])
-            // Overview and the category tabs are mutually exclusive — the
-            // dashboard and a specific category's review list both want the
-            // window's room, so only one shows at a time.
-            if isOverviewCollapsed {
-                categoryTabs.padding(.horizontal)
-                Divider().padding(.top, 8)
-                ScrollView {
+            // Tabs stay visible always — they're the primary navigation, not
+            // something that should disappear. Overview's own collapse just
+            // controls how much of *its* content shows above them; whatever
+            // doesn't fit on screen scrolls, so nothing is ever capped or cut
+            // off to force a fit.
+            ScrollView {
+                VStack(spacing: 12) {
+                    OverviewView(isCollapsed: $isOverviewCollapsed)
+                    categoryTabs
                     CategorySectionView(category: selectedCategory)
-                        .padding()
                 }
-            } else {
-                Spacer(minLength: 0)
+                .padding()
             }
             Divider()
             SelectionFooterBar(showConfirm: $showConfirmSheet)
@@ -62,9 +61,6 @@ struct MainView: View {
     }
 
     private var categoryTabs: some View {
-        // Only ever shown while Overview is collapsed (see body), so there's
-        // no scenario where a tab gets picked while Overview is still up —
-        // no need to separately force a collapse on selection here.
         Picker("", selection: $selectedCategory) {
             ForEach(CleanupCategory.allCases) { category in
                 Label(category.tabLabel, systemImage: category.symbol).tag(category)
@@ -72,6 +68,9 @@ struct MainView: View {
         }
         .pickerStyle(.segmented)
         .labelsHidden()
-        .padding(.vertical, 8)
+        // Picking a tab means you're done with the dashboard for now —
+        // collapse Overview so its content doesn't sit between the tabs and
+        // the category you just asked to see.
+        .onChange(of: selectedCategory) { _ in isOverviewCollapsed = true }
     }
 }
