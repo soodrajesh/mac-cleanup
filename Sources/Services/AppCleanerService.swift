@@ -139,12 +139,41 @@ enum AppCleanerService {
     /// Pure filter: which found names both look like a real bundle ID
     /// (reverse-DNS shape — at least three dot-separated segments, no
     /// stray characters) and have no currently-installed app claiming
-    /// them. Never Apple's own, matched or not. Pure and file-system-free
-    /// so it's directly testable.
+    /// them, directly or by vendor family. Never Apple's own, matched or
+    /// not. Pure and file-system-free so it's directly testable.
     static func orphanBundleIDs(foundNames: Set<String>, installedBundleIDs: Set<String>) -> Set<String> {
-        foundNames.filter { name in
-            looksLikeBundleID(name) && !name.hasPrefix("com.apple.") && !installedBundleIDs.contains(name)
+        let installedVendorPrefixes = Set(installedBundleIDs.compactMap(vendorPrefix))
+        return foundNames.filter { name in
+            guard looksLikeBundleID(name), !isAppleOwned(name), !installedBundleIDs.contains(name) else { return false }
+            // A helper/updater/plugin commonly ships under its own bundle
+            // ID rather than its parent app's (e.g. "us.zoom.updater"
+            // alongside an installed "us.zoom.xos") — if anything from the
+            // same vendor is installed, this is far more likely a live
+            // component of it than something actually abandoned, so skip
+            // it rather than risk flagging it. Favors missing a real
+            // orphan over flagging something still in use.
+            if let prefix = vendorPrefix(name), installedVendorPrefixes.contains(prefix) { return false }
+            return true
         }
+    }
+
+    /// Catches not just literal `com.apple.*` app bundle IDs but Apple's
+    /// app-group forms too (`group.com.apple.*`, `systemgroup.com.apple.*`)
+    /// — both turned up as real false positives in testing (Mail's group
+    /// container, a searchpartyd system-group setting), so this checks for
+    /// "com.apple." appearing anywhere, not just as a strict prefix.
+    static func isAppleOwned(_ bundleID: String) -> Bool {
+        bundleID.range(of: "com.apple.") != nil
+    }
+
+    /// The reverse-DNS "vendor" portion — the first two dot-separated
+    /// segments, e.g. "us.zoom" from "us.zoom.updater" — shared by an app
+    /// and its helper tools/updaters/plugins even when they ship under
+    /// distinct bundle IDs from the parent app itself.
+    static func vendorPrefix(_ bundleID: String) -> String? {
+        let segments = bundleID.split(separator: ".")
+        guard segments.count >= 2 else { return nil }
+        return segments[0...1].joined(separator: ".")
     }
 
     static func looksLikeBundleID(_ name: String) -> Bool {

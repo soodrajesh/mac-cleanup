@@ -150,6 +150,32 @@ do {
     expectEqual(orphans, ["com.adobe.OldApp"], "only the not-installed, bundle-ID-shaped, non-Apple name is flagged as orphaned")
 }
 
+// Real false positives caught during manual testing: Apple's app-group
+// forms (not just a literal "com.apple." prefix) and vendor-family helper
+// tools of an app that's still installed.
+expect(AppCleanerService.isAppleOwned("group.com.apple.mail"), "an app-group container for Mail is still Apple-owned")
+expect(AppCleanerService.isAppleOwned("systemgroup.com.apple.icloud.searchpartyd.sharedsettings"),
+       "a systemgroup setting is still Apple-owned")
+expect(AppCleanerService.isAppleOwned("com.apple.Safari"), "a plain com.apple.* bundle ID is still caught")
+expect(!AppCleanerService.isAppleOwned("com.adobe.OldApp"), "a genuinely non-Apple bundle ID is not flagged as Apple's")
+
+expectEqual(AppCleanerService.vendorPrefix("us.zoom.updater"), "us.zoom", "vendor prefix is the first two segments")
+expectEqual(AppCleanerService.vendorPrefix("us.zoom.us.xos"), "us.zoom", "still just the first two segments, even with more after")
+expectEqual(AppCleanerService.vendorPrefix("com"), nil, "a single segment has no vendor prefix")
+
+do {
+    let found: Set<String> = [
+        "group.com.apple.mail",                                    // Apple app-group → never flagged
+        "systemgroup.com.apple.icloud.searchpartyd.sharedsettings", // Apple systemgroup → never flagged
+        "us.zoom.updater",                                          // shares "us.zoom" with an installed app → skipped
+        "com.adobe.TrulyGoneApp",                                   // no installed app shares its vendor → real orphan
+    ]
+    let installed: Set<String> = ["us.zoom.xos"]  // the main Zoom app, not the updater helper's own bundle ID
+    let orphans = AppCleanerService.orphanBundleIDs(foundNames: found, installedBundleIDs: installed)
+    expectEqual(orphans, ["com.adobe.TrulyGoneApp"],
+                "Apple app-groups and an installed app's own helper tools are excluded; only the true orphan remains")
+}
+
 // MARK: - SizeCalculator timeout guard
 
 do {

@@ -103,10 +103,17 @@ open /Applications/DiskSweeper.app
   ever removes the app bundle, never these locations). Found by reversing
   the normal direction: scanning the bundle-ID-keyed leftover locations for
   names that look like a real bundle ID (reverse-DNS shape) but match no
-  currently-installed app, skipping Apple's own IDs outright. Labeled
-  "Orphaned: `<bundle ID>` — ..." and carries extra-hedged copy, since
-  there's no live app to confirm against — it might belong to something
-  installed outside `/Applications`, not just something already gone.
+  currently-installed app. Two safeguards keep this from over-flagging:
+  anything Apple-owned is excluded — not just a literal `com.apple.*`
+  prefix, but its app-group forms too (`group.com.apple.*`,
+  `systemgroup.com.apple.*`, both real false positives caught in testing) —
+  and anything sharing a vendor prefix with an installed app (e.g.
+  `us.zoom.updater` alongside installed `us.zoom.xos`) is skipped, since
+  that's almost always a live helper/updater component, not something
+  abandoned. Labeled "Orphaned: `<bundle ID>` — ..." and carries
+  extra-hedged copy, since there's no live app to confirm against — it
+  might belong to something installed outside `/Applications`, not just
+  something already gone.
 - **Filter within a category** — any category with more than a handful of
   items gets a "Filter by name or path" box (most relevant on Deep Scan,
   where results can run long) that narrows the list live as you type.
