@@ -168,8 +168,9 @@ continuous scroll, so nothing is ever capped or hidden to force a fit.
 ## Testing
 
 The algorithmically interesting logic — Deep Scan's folder-vs-file selection,
-Homebrew's formula-name parsing, and App Cleaner's leftover-path lookups —
-has regression coverage in `Tests/`, run directly against the real service
+Homebrew's formula-name parsing, App Cleaner's leftover-path lookups and
+orphan-detection heuristics, and `SizeCalculator`'s timeout guard — has
+regression coverage in `Tests/`, run directly against the real service
 files (no XCTest, no Xcode project or SwiftPM package, matching the rest of
 this project's `swiftc`-only build):
 
