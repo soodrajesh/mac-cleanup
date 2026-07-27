@@ -50,6 +50,7 @@ struct ItemRowView: View {
             }
             .buttonStyle(.plain)
             .help("Reveal in Finder")
+            .accessibilityLabel("Reveal in Finder")
         }
         .padding(.vertical, 4)
         .contentShape(Rectangle())

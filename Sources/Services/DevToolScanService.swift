@@ -24,12 +24,15 @@ enum DevToolScanService {
                     name: "Simulator Caches", subtitle: "Regenerable simulator runtime caches",
                     safety: .safe, to: &items)
 
-        // Package manager caches — each only added if the tool/its cache exists.
-        addIfExists(home.appendingPathComponent(".npm"), name: "npm Cache", subtitle: "~/.npm", safety: .safe, to: &items)
-        addIfExists(home.appendingPathComponent("Library/Caches/Yarn"), name: "Yarn Cache", subtitle: "~/Library/Caches/Yarn", safety: .safe, to: &items)
-        addIfExists(home.appendingPathComponent("Library/pnpm/store"), name: "pnpm Store", subtitle: "~/Library/pnpm/store", safety: .safe, to: &items)
-        addIfExists(home.appendingPathComponent("Library/Caches/pip"), name: "pip Cache", subtitle: "~/Library/Caches/pip", safety: .safe, to: &items)
-        addIfExists(home.appendingPathComponent("Library/Caches/pypoetry"), name: "Poetry Cache", subtitle: "~/Library/Caches/pypoetry", safety: .safe, to: &items)
+        // Package manager caches — each only added if the tool/its cache
+        // exists. Subtitle describes *why* it's safe, not the path (every
+        // row already shows its own full path below).
+        let regenerable = "Regenerable — repopulated on next install"
+        addIfExists(home.appendingPathComponent(".npm"), name: "npm Cache", subtitle: regenerable, safety: .safe, to: &items)
+        addIfExists(home.appendingPathComponent("Library/Caches/Yarn"), name: "Yarn Cache", subtitle: regenerable, safety: .safe, to: &items)
+        addIfExists(home.appendingPathComponent("Library/pnpm/store"), name: "pnpm Store", subtitle: regenerable, safety: .safe, to: &items)
+        addIfExists(home.appendingPathComponent("Library/Caches/pip"), name: "pip Cache", subtitle: regenerable, safety: .safe, to: &items)
+        addIfExists(home.appendingPathComponent("Library/Caches/pypoetry"), name: "Poetry Cache", subtitle: regenerable, safety: .safe, to: &items)
 
         items.append(contentsOf: unavailableSimulators())
         return items

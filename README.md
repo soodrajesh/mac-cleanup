@@ -94,16 +94,22 @@ Every scan runs concurrently and sizes items progressively (via `du`,
 bounded to a handful of processes at once) so the UI never blocks, even on
 a large `DerivedData` folder.
 
-## Overview panel
+## Navigation
 
-A live-updating snapshot sits above the categories: a single segmented
-storage bar showing space by category (a part-to-whole comparison, which a
-bar shows more precisely than a pie/donut's arc angles), a legend with exact
-sizes, and the 10 largest individually reviewable items across every
-category — so the biggest wins are visible without expanding each section
+The six categories live behind a horizontal tab strip rather than one long
+stacked list — click a tab, see just that category. Above the tabs, a
+collapsible **Overview** panel gives a live-updating snapshot: a single
+segmented storage bar showing space by category (a part-to-whole comparison,
+which a bar shows more precisely than a pie/donut's arc angles), a legend
+with exact sizes, and the 10 largest individually reviewable items across
+every category — so the biggest wins are visible without opening each tab
 by hand. Colors are assigned in a fixed order per category (never reassigned
 or cycled) and are contrast-checked for colorblind-safety in both light and
-dark mode.
+dark mode. Overview starts expanded (the dashboard you see first) and
+auto-collapses to a single line the moment you pick a tab, freeing up room
+for that category's content — toggle it back open anytime via its chevron.
+Everything (Overview, tabs, and the active category's list) sits in one
+continuous scroll, so nothing is ever capped or hidden to force a fit.
 
 ## Layout
 

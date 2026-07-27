@@ -23,13 +23,17 @@ enum BrowserScanService {
 
         for browser in browsers {
             for relPath in browser.paths {
-                for url in resolve(relPath, under: home) {
+                for (url, detail) in resolve(relPath, under: home) {
                     guard fm.fileExists(atPath: url.path) else { continue }
                     let modified = (try? url.resourceValues(forKeys: [.contentModificationDateKey]))?.contentModificationDate
                     items.append(ScanItem(
                         url: url,
                         displayName: "\(browser.name) Cache",
-                        subtitle: url.path.replacingOccurrences(of: home.path, with: "~"),
+                        // The full path already shows on its own row below —
+                        // this is just the bit that distinguishes it from a
+                        // sibling row (which profile, which cache), not a
+                        // repeat of the whole thing.
+                        subtitle: detail,
                         status: .measuring,
                         isDirectory: true,
                         lastAccessed: modified,
@@ -43,9 +47,12 @@ enum BrowserScanService {
 
     /// Expands a single `*` glob segment (e.g. Chrome/Firefox profile folders)
     /// against the filesystem; paths without a glob resolve to themselves.
-    private static func resolve(_ relPath: String, under home: URL) -> [URL] {
+    /// Returns each match's URL alongside the part that varied (e.g.
+    /// "Profile 1/Code Cache") — `nil` when there was no glob to distinguish
+    /// (Safari/Arc have exactly one match each).
+    private static func resolve(_ relPath: String, under home: URL) -> [(url: URL, detail: String?)] {
         guard let starRange = relPath.range(of: "*") else {
-            return [home.appendingPathComponent(relPath)]
+            return [(home.appendingPathComponent(relPath), nil)]
         }
         let before = String(relPath[relPath.startIndex..<starRange.lowerBound])
         let after = String(relPath[starRange.upperBound...])
@@ -54,6 +61,10 @@ enum BrowserScanService {
         guard let children = try? FileManager.default.contentsOfDirectory(
             at: parent, includingPropertiesForKeys: nil, options: [.skipsHiddenFiles]) else { return [] }
         let suffix = after.hasPrefix("/") ? String(after.dropFirst()) : after
-        return children.map { suffix.isEmpty ? $0 : $0.appendingPathComponent(suffix) }
+        return children.map { child in
+            let url = suffix.isEmpty ? child : child.appendingPathComponent(suffix)
+            let detail = suffix.isEmpty ? child.lastPathComponent : "\(child.lastPathComponent)/\(suffix)"
+            return (url, detail)
+        }
     }
 }
