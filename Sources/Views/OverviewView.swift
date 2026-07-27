@@ -6,6 +6,7 @@ import SwiftUI
 /// the biggest wins are visible without expanding each section by hand.
 struct OverviewView: View {
     @EnvironmentObject var model: SweepModel
+    @Binding var isCollapsed: Bool
 
     private var entries: [(category: CleanupCategory, bytes: Int64)] {
         CleanupCategory.allCases
@@ -29,28 +30,40 @@ struct OverviewView: View {
     var body: some View {
         if grandTotal > 0 {
             VStack(alignment: .leading, spacing: 12) {
-                HStack {
-                    Text("Overview").font(.headline)
-                    Spacer()
-                    Text("\(grandTotal.humanBytes) scanned").foregroundStyle(.secondary)
-                }
-
-                storageBar
-                legend
-
-                if !topItems.isEmpty {
-                    Divider().padding(.vertical, 2)
-                    Text("Largest Items").font(.subheadline).bold()
-                    // Capped and independently scrollable — Overview sits
-                    // pinned above the category tabs, so its own height has
-                    // to stay bounded rather than growing with up to 10 rows.
-                    ScrollView {
-                        ForEach(topItems) { item in
-                            ItemRowView(item: item)
-                            if item.id != topItems.last?.id { Divider() }
-                        }
+                Button {
+                    isCollapsed.toggle()
+                } label: {
+                    HStack {
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 10, weight: .bold))
+                            .rotationEffect(.degrees(isCollapsed ? 0 : 90))
+                        Text("Overview").font(.headline)
+                        Spacer()
+                        Text("\(grandTotal.humanBytes) scanned").foregroundStyle(.secondary)
                     }
-                    .frame(height: 180)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+
+                if !isCollapsed {
+                    storageBar
+                    legend
+
+                    if !topItems.isEmpty {
+                        Divider().padding(.vertical, 2)
+                        Text("Largest Items").font(.subheadline).bold()
+                        // Capped and independently scrollable — Overview sits
+                        // pinned above the category tabs, so its own height
+                        // has to stay bounded rather than growing with up to
+                        // 10 rows.
+                        ScrollView {
+                            ForEach(topItems) { item in
+                                ItemRowView(item: item)
+                                if item.id != topItems.last?.id { Divider() }
+                            }
+                        }
+                        .frame(height: 180)
+                    }
                 }
             }
             .padding(14)

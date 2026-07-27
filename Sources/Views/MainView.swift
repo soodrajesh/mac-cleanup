@@ -6,12 +6,13 @@ struct MainView: View {
     @State private var showProgressSheet = false
     @State private var diskStats: DiskInfoService.VolumeStats?
     @State private var selectedCategory: CleanupCategory = .systemCaches
+    @State private var isOverviewCollapsed = false
 
     var body: some View {
         VStack(spacing: 0) {
             header
             Divider()
-            OverviewView().padding([.horizontal, .top])
+            OverviewView(isCollapsed: $isOverviewCollapsed).padding([.horizontal, .top])
             categoryTabs.padding(.horizontal)
             Divider().padding(.top, 8)
             ScrollView {
@@ -62,5 +63,9 @@ struct MainView: View {
         .pickerStyle(.segmented)
         .labelsHidden()
         .padding(.vertical, 8)
+        // Overview is the dashboard you see first; the moment you pick a
+        // tab you've moved on to a specific category, so collapse it to
+        // give that category's content the room instead.
+        .onChange(of: selectedCategory) { _ in isOverviewCollapsed = true }
     }
 }
