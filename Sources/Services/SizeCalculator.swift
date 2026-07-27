@@ -19,7 +19,9 @@ enum SizeCalculator {
     /// kernel buffer and made `du` block on writing to it forever, which
     /// looked exactly like App Cleaner's size column spinning forever,
     /// since `sizeAll` below only runs a handful of these concurrently and
-    /// everything queues up behind the one stuck call.
+    /// everything queues up behind the one stuck call. Verified fixed
+    /// end-to-end against a real 24GB Container that previously triggered
+    /// this.
     ///
     /// The timeout is a second, independent line of defense for the rarer
     /// case of a path that hangs for an unrelated reason (an unresponsive

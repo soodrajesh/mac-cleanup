@@ -97,7 +97,23 @@ struct CategorySectionView: View {
             // The Trash category has no itemized scan — TrashHeaderView
             // fetches and shows its own real total below.
             if category != .trash, let result {
-                if result.isScanning { ProgressView().controlSize(.small) }
+                if result.isScanning {
+                    ProgressView().controlSize(.small)
+                    // A category with a lot of items (App Cleaner sizing
+                    // ~90 paths, some multi-gigabyte) can take real
+                    // wall-clock time even though nothing's stuck — without
+                    // this, a scan 40s into a 60s job looks identical to
+                    // one that's frozen. Only counted items are `.trash`
+                    // (matches what sizeAll actually sizes).
+                    let sizableCount = result.items.filter { $0.removal == .trash }.count
+                    if sizableCount > 0 {
+                        let sizedCount = result.items.filter { $0.removal == .trash && $0.status != .measuring }.count
+                        Text("\(sizedCount)/\(sizableCount)")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .monospacedDigit()
+                    }
+                }
                 Text(result.totalBytes.humanBytes).monospacedDigit().foregroundStyle(.secondary)
             }
             if hasSafeItems {
