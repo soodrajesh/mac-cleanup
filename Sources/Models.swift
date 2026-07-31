@@ -8,6 +8,7 @@ enum CleanupCategory: String, CaseIterable, Identifiable {
     case trash = "Trash"
     case deepScan = "Deep Scan"
     case appCleaner = "App Cleaner"
+    case diskReport = "Disk Report"
 
     var id: String { rawValue }
 
@@ -23,6 +24,7 @@ enum CleanupCategory: String, CaseIterable, Identifiable {
         case .trash:         return "Trash"
         case .deepScan:      return "Deep Scan"
         case .appCleaner:    return "Apps"
+        case .diskReport:    return "Report"
         }
     }
 
@@ -35,6 +37,7 @@ enum CleanupCategory: String, CaseIterable, Identifiable {
         case .trash:         return "trash"
         case .deepScan:      return "doc.text.magnifyingglass"
         case .appCleaner:    return "square.grid.2x2"
+        case .diskReport:    return "chart.bar.doc.horizontal"
         }
     }
 
@@ -47,6 +50,7 @@ enum CleanupCategory: String, CaseIterable, Identifiable {
         case .trash:         return "Empty Trash — nowhere further to trash this to"
         case .deepScan:      return "Documents, Desktop, Pictures, Movies — large files only, on demand"
         case .appCleaner:    return "Installed apps and their exact-bundle-ID-matched leftovers, on demand"
+        case .diskReport:    return "Browse any folder to see where space actually goes — read-only, nothing selected or deleted"
         }
     }
 
@@ -62,6 +66,10 @@ enum CleanupCategory: String, CaseIterable, Identifiable {
         case .trash:         return Color(light: "#e87ba4", dark: "#d55181") // slot 5 · magenta
         case .deepScan:      return Color(light: "#008300", dark: "#008300")  // slot 6 · green
         case .appCleaner:    return Color(light: "#7a5cd6", dark: "#9478e8")  // slot 7 · purple
+        // Never actually rendered — Disk Report has no scanned total (see
+        // OverviewView's `entries` filter, which drops zero-byte
+        // categories), but the switch must stay exhaustive.
+        case .diskReport:    return Color(light: "#6b6b6b", dark: "#8a8a8a")  // slot 8 · gray
         }
     }
 }

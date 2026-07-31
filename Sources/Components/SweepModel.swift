@@ -44,8 +44,11 @@ final class SweepModel: ObservableObject {
     func scanAll() {
         // Deep Scan and App Cleaner both look at actual personal
         // content/installed apps rather than disposable cache — they only
-        // run when explicitly started, never automatically.
-        for category in CleanupCategory.allCases where category != .deepScan && category != .appCleaner {
+        // run when explicitly started, never automatically. Disk Report
+        // isn't a scan at all — it's on-demand drill-down browsing with no
+        // ScanResult, sized one directory level at a time by DiskReportView.
+        for category in CleanupCategory.allCases
+        where category != .deepScan && category != .appCleaner && category != .diskReport {
             scan(category)
         }
         refreshTrashSize()
@@ -112,6 +115,7 @@ final class SweepModel: ObservableObject {
         case .trash:         return { [] }  // aggregate stat only — rendered by TrashHeaderView, not itemized
         case .deepScan:      return DeepScanService.listItems
         case .appCleaner:    return AppCleanerService.listItems
+        case .diskReport:    return { [] }  // never scanned — see scanAll()
         }
     }
 

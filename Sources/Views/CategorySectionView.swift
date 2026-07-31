@@ -53,6 +53,8 @@ struct CategorySectionView: View {
                 DeepScanStartView().padding(.leading, 4)
             } else if category == .appCleaner && result == nil {
                 AppCleanerStartView().padding(.leading, 4)
+            } else if category == .diskReport {
+                DiskReportView().padding(.leading, 4)
             } else {
                 VStack(spacing: 0) {
                     if result?.isScanning == true && (result?.items.isEmpty ?? true) {

@@ -116,6 +116,16 @@ open /Applications/DiskSweeper.app
   something already gone. Like Deep Scan, its results persist across
   launches with a "Scanned n ago" timestamp, so reopening the tab doesn't
   mean re-paying the scan cost every time.
+- **Disk Report** — an ncdu-style, read-only folder browser, separate from
+  every other category's scan-select-delete flow: no checkboxes, nothing is
+  ever trashed from here. Starts at `~`, lists immediate children (both
+  files and folders) sorted by size with a relative bar, and lets you click
+  into any folder to descend further, breadcrumb back up, or reveal an item
+  in Finder. Sized one directory level at a time — via `du -d 1 -k` for
+  subfolders plus a direct `stat` for files at that level, since BSD `du`
+  rejects `-a` and `-d` combined — rather than one big recursive scan of the
+  whole home directory up front. Answers "where did the space actually go,"
+  as opposed to Deep Scan's "what's safe to remove."
 - **Filter within a category** — any category with more than a handful of
   items gets a "Filter by name or path" box (most relevant on Deep Scan,
   where results can run long) that narrows the list live as you type.
@@ -141,7 +151,7 @@ for something that doesn't need a recursive tree walk.
 
 ## Navigation
 
-The seven categories live behind a horizontal tab strip rather than one long
+The eight categories live behind a horizontal tab strip rather than one long
 stacked list — click a tab, see just that category. Above the tabs, a
 collapsible **Overview** panel gives a live-updating snapshot: a single
 segmented storage bar showing space by category (a part-to-whole comparison,
@@ -160,7 +170,7 @@ continuous scroll, so nothing is ever capped or hidden to force a fit.
 
 | Shortcut | Action |
 | --- | --- |
-| `⌘1`–`⌘7` | Jump to a tab (Caches, Dev Tools, Browser, Downloads, Trash, Deep Scan, Apps) |
+| `⌘1`–`⌘8` | Jump to a tab (Caches, Dev Tools, Browser, Downloads, Trash, Deep Scan, Apps, Report) |
 | `⌘R` | Rescan all categories |
 | `⌘⇧A` | Select All Safe in the current tab |
 | `⌘⌫` | Move Selected to Trash |
@@ -186,10 +196,11 @@ Sources/
   Services/  SizeCalculator, TrashService, DiskInfoService,
              CacheScanService, DevToolScanService, BrewService,
              DockerService, BrowserScanService, DownloadsScanService,
-             DeepScanService, ScanCache, AppCleanerService
+             DeepScanService, ScanCache, AppCleanerService, DiskReportService
   Views/     MainView, OverviewView, CategorySectionView, ItemRowView,
              CLIActionRowView, TrashHeaderView, DeepScanStartView,
-             AppCleanerStartView, ConfirmDeletionSheet, DeletionProgressView
+             AppCleanerStartView, ConfirmDeletionSheet, DeletionProgressView,
+             DiskReportView
   Components/ SweepModel, SelectionFooterBar
 ```
 
