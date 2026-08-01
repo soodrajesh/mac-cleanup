@@ -50,7 +50,7 @@ enum CleanupCategory: String, CaseIterable, Identifiable {
         case .trash:         return "Empty Trash — nowhere further to trash this to"
         case .deepScan:      return "Documents, Desktop, Pictures, Movies — large files only, on demand"
         case .appCleaner:    return "Installed apps and their exact-bundle-ID-matched leftovers, on demand"
-        case .diskReport:    return "Browse any folder to see where space actually goes — read-only, nothing selected or deleted"
+        case .diskReport:    return "Browse any folder to see where space actually goes — select files to trash, folders are browse-only"
         }
     }
 

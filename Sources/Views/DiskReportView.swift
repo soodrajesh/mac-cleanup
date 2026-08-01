@@ -1,13 +1,18 @@
 import SwiftUI
 
-/// ncdu-style read-only folder browser: descend into any directory under
-/// home, see immediate children sorted by size with a relative bar. No
-/// checkboxes, no Trash — Deep Scan already answers "what's safe to
-/// remove"; this answers "where did the space actually go."
+/// ncdu-style folder browser: descend into any directory under home, see
+/// immediate children sorted by size with a relative bar. Unlike every other
+/// tab, entries here aren't safety-classified by a scan — they're arbitrary
+/// files anywhere under home — so selection/delete is deliberately scoped to
+/// *files only*. Folders can only be entered, never trashed in one click,
+/// which keeps a stray tap from wiping out an entire directory.
 struct DiskReportView: View {
     @State private var currentDirectory = FileManager.default.homeDirectoryForCurrentUser
     @State private var entries: [DiskReportService.Entry] = []
     @State private var isLoading = false
+    @State private var selectedIDs: Set<URL> = []
+    @State private var showConfirm = false
+    @State private var isDeleting = false
 
     private var home: URL { FileManager.default.homeDirectoryForCurrentUser }
 
@@ -26,22 +31,58 @@ struct DiskReportView: View {
         return result
     }
 
+    private var selectedEntries: [DiskReportService.Entry] {
+        entries.filter { selectedIDs.contains($0.id) }
+    }
+    private var selectedBytes: Int64 { selectedEntries.reduce(0) { $0 + $1.sizeBytes } }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            breadcrumbBar
-            if isLoading && entries.isEmpty {
-                HStack { ProgressView().controlSize(.small); Text("Scanning…").foregroundStyle(.secondary) }
-                    .padding(.vertical, 8)
-            } else if entries.isEmpty {
-                Text("Nothing found").font(.caption).foregroundStyle(.secondary).padding(.vertical, 8)
-            } else {
-                ForEach(entries) { entry in
-                    row(entry)
-                    Divider()
+        VStack(alignment: .leading, spacing: 0) {
+            VStack(alignment: .leading, spacing: 8) {
+                breadcrumbBar
+                if isLoading && entries.isEmpty {
+                    HStack { ProgressView().controlSize(.small); Text("Scanning…").foregroundStyle(.secondary) }
+                        .padding(.vertical, 8)
+                } else if entries.isEmpty {
+                    Text("Nothing found").font(.caption).foregroundStyle(.secondary).padding(.vertical, 8)
+                } else {
+                    ForEach(entries) { entry in
+                        row(entry)
+                        Divider()
+                    }
                 }
             }
+            footerBar
         }
-        .task(id: currentDirectory) { await load() }
+        .task(id: currentDirectory) { selectedIDs = []; await load() }
+        .confirmationDialog(
+            "Move \(selectedEntries.count) file\(selectedEntries.count == 1 ? "" : "s") to Trash?",
+            isPresented: $showConfirm, titleVisibility: .visible
+        ) {
+            Button("Move to Trash", role: .destructive) { deleteSelected() }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This moves the selected files to Trash. \(selectedBytes.humanBytes) will be freed once Trash is emptied.")
+        }
+    }
+
+    private var footerBar: some View {
+        HStack {
+            if isDeleting {
+                ProgressView().controlSize(.small)
+                Text("Moving to Trash…").foregroundStyle(.secondary)
+            } else if selectedIDs.isEmpty {
+                Text("Select files to move to Trash").foregroundStyle(.secondary)
+            } else {
+                Text("\(selectedIDs.count) file\(selectedIDs.count == 1 ? "" : "s") selected · \(selectedBytes.humanBytes)")
+                    .foregroundStyle(.secondary)
+            }
+            Spacer()
+            Button("Move Selected to Trash") { showConfirm = true }
+                .buttonStyle(.borderedProminent)
+                .disabled(selectedIDs.isEmpty || isDeleting)
+        }
+        .padding(.top, 8)
     }
 
     private var breadcrumbBar: some View {
@@ -73,11 +114,33 @@ struct DiskReportView: View {
     private func row(_ entry: DiskReportService.Entry) -> some View {
         let maxSize = entries.first?.sizeBytes ?? 1
         let fraction = maxSize > 0 ? Double(entry.sizeBytes) / Double(maxSize) : 0
-        return Button {
-            if entry.isDirectory { currentDirectory = entry.url }
-            else { revealInFinder(entry.url) }
-        } label: {
-            HStack(spacing: 10) {
+        let isSelected = selectedIDs.contains(entry.id)
+        return HStack(spacing: 10) {
+            // Only files are selectable — entering a folder is one tap away,
+            // but trashing one outright isn't offered from this view.
+            if entry.isDirectory {
+                Color.clear.frame(width: 16)
+            } else {
+                Button {
+                    if isSelected { selectedIDs.remove(entry.id) } else { selectedIDs.insert(entry.id) }
+                } label: {
+                    Image(systemName: isSelected ? "checkmark.square.fill" : "square")
+                        .foregroundStyle(isSelected ? Color.accentColor : Color.secondary)
+                }
+                .buttonStyle(.plain)
+            }
+            Button {
+                if entry.isDirectory { currentDirectory = entry.url }
+                else { revealInFinder(entry.url) }
+            } label: {
+                rowLabel(entry, fraction: fraction)
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    private func rowLabel(_ entry: DiskReportService.Entry, fraction: Double) -> some View {
+        HStack(spacing: 10) {
                 Image(systemName: entry.isDirectory ? "folder.fill" : "doc")
                     .foregroundStyle(entry.isDirectory ? Color.accentColor : Color.secondary)
                     .frame(width: 16)
@@ -97,10 +160,28 @@ struct DiskReportView: View {
                 if entry.isDirectory {
                     Image(systemName: "chevron.right").font(.caption2).foregroundStyle(.tertiary)
                 }
-            }
-            .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .contentShape(Rectangle())
+    }
+
+    private func deleteSelected() {
+        let items = selectedEntries
+        guard !items.isEmpty else { return }
+        isDeleting = true
+        Task {
+            let trashedIDs: Set<URL> = await Task.detached(priority: .userInitiated) {
+                var trashed: Set<URL> = []
+                for item in items {
+                    if (try? FileManager.default.trashItem(at: item.url, resultingItemURL: nil)) != nil {
+                        trashed.insert(item.id)
+                    }
+                }
+                return trashed
+            }.value
+            selectedIDs.subtract(trashedIDs)
+            isDeleting = false
+            await load()
+        }
     }
 
     private func load() async {
