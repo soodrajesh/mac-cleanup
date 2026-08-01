@@ -197,6 +197,42 @@ do {
     expect(result != nil, "a normal path still sizes correctly with the default timeout")
 }
 
+// MARK: - TrashService.shouldThrowAccessDenied
+
+expect(!TrashService.shouldThrowAccessDenied(existingCount: 0, deniedCount: 0),
+       "nothing exists yet → not an error, just nothing to report")
+expect(!TrashService.shouldThrowAccessDenied(existingCount: 2, deniedCount: 0),
+       "everything readable → not an error")
+expect(!TrashService.shouldThrowAccessDenied(existingCount: 2, deniedCount: 1),
+       "only some roots denied → the readable ones still count, not an error")
+expect(TrashService.shouldThrowAccessDenied(existingCount: 2, deniedCount: 2),
+       "every existing root denied → genuinely can't tell, this is an error")
+expect(TrashService.shouldThrowAccessDenied(existingCount: 1, deniedCount: 1),
+       "the single existing root denied → an error")
+
+// MARK: - DiskReportService.parseDuOutput
+
+do {
+    // `du -d 1 -k` output: root's own summary line first, then one line
+    // per immediate child — root path must be dropped, children kept.
+    let output = "20480\t/Users/x/Documents\n8192\t/Users/x/Documents/Photos\n4096\t/Users/x/Documents/Notes\n"
+    let entries = DiskReportService.parseDuOutput(output, rootPath: "/Users/x/Documents")
+    expectEqual(entries.count, 2, "root's own summary line is dropped, only children remain")
+    expect(entries.contains { $0.url.path == "/Users/x/Documents/Photos" && $0.sizeBytes == 8192 * 1024 },
+           "child size is kb → bytes converted correctly")
+    expect(entries.allSatisfy(\.isDirectory), "every parsed entry is marked a directory (this is the -d 1 subdirectory pass)")
+}
+
+do {
+    // A line with no tab (malformed/unexpected `du` output) is skipped
+    // rather than crashing or producing a garbage entry.
+    let output = "not a valid du line\n4096\t/Users/x/Documents/Notes\n"
+    let entries = DiskReportService.parseDuOutput(output, rootPath: "/Users/x/Documents")
+    expectEqual(entries.count, 1, "malformed line is skipped, well-formed one still parses")
+}
+
+expectEqual(DiskReportService.parseDuOutput("", rootPath: "/Users/x"), [], "empty output → no entries")
+
 // MARK: - Report
 
 if failures == 0 {

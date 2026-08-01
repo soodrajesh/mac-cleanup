@@ -30,10 +30,17 @@ struct OverviewView: View {
     /// Only `.trash`-removal items — CLI-native items (Homebrew/Docker/
     /// Simulator) aren't part of the generic Trash flow, so surfacing them
     /// here with a checkbox that silently does nothing would be misleading.
-    private var topItems: [ScanItem] {
-        model.results.values.flatMap(\.items)
-            .filter { $0.removal == .trash && $0.status.sizeIfKnown != nil }
-            .sorted { ($0.status.sizeIfKnown ?? 0) > ($1.status.sizeIfKnown ?? 0) }
+    /// Paired with its category so each row can carry the same color as its
+    /// legend entry above — ties the two halves of Overview together instead
+    /// of leaving the reader to infer it from the path text alone.
+    private var topItems: [(category: CleanupCategory, item: ScanItem)] {
+        model.results
+            .flatMap { category, result in
+                result.items
+                    .filter { $0.removal == .trash && $0.status.sizeIfKnown != nil }
+                    .map { (category, $0) }
+            }
+            .sorted { ($0.item.status.sizeIfKnown ?? 0) > ($1.item.status.sizeIfKnown ?? 0) }
             .prefix(10)
             .map { $0 }
     }
@@ -71,9 +78,14 @@ struct OverviewView: View {
                         // MainView wraps everything in one ScrollView, so
                         // this doesn't need its own height cap — the full
                         // list shows, and the page scrolls if it doesn't fit.
-                        ForEach(topItems) { item in
-                            ItemRowView(item: item)
-                            if item.id != topItems.last?.id { Divider() }
+                        ForEach(topItems, id: \.item.id) { entry in
+                            HStack(spacing: 8) {
+                                RoundedRectangle(cornerRadius: 2)
+                                    .fill(entry.category.chartColor)
+                                    .frame(width: 3)
+                                ItemRowView(item: entry.item)
+                            }
+                            if entry.item.id != topItems.last?.item.id { Divider() }
                         }
                     }
                 }

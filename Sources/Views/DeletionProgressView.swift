@@ -11,8 +11,13 @@ struct DeletionProgressView: View {
             if model.isDeleting {
                 Text("Moving to Trash…").font(.headline)
                 ProgressView(value: model.deletionProgress)
-                Text("\(model.deletionOutcomes.count) of \(model.deletionTotal)")
-                    .font(.caption).foregroundStyle(.secondary)
+                HStack {
+                    Text("\(model.deletionOutcomes.count) of \(model.deletionTotal)")
+                        .font(.caption).foregroundStyle(.secondary)
+                    Spacer()
+                    Button("Cancel") { model.cancelDeletion() }
+                        .buttonStyle(.bordered)
+                }
             } else {
                 let succeeded = model.deletionOutcomes.filter(\.success)
                 let failed = model.deletionOutcomes.filter { !$0.success }
@@ -27,8 +32,24 @@ struct DeletionProgressView: View {
                         Text("• \(outcome.item.displayName): \(outcome.error ?? "unknown error")")
                             .font(.caption).foregroundStyle(.secondary)
                     }
+                    // Most skips are Full Disk Access, not something wrong
+                    // with the specific file — offer the one-click fix
+                    // instead of making the user diagnose it from raw text.
+                    if failed.contains(where: { ($0.error ?? "").looksLikePermissionError }) {
+                        Button("Open Full Disk Access Settings…") { openFullDiskAccessSettings() }
+                            .buttonStyle(.link)
+                            .font(.caption)
+                    }
                 }
                 HStack {
+                    if !succeeded.isEmpty {
+                        Button("Undo") {
+                            model.undoLastDeletion()
+                            isPresented = false
+                        }
+                        .buttonStyle(.bordered)
+                        .help("Move everything just trashed back to where it came from")
+                    }
                     Spacer()
                     Button("Done") { isPresented = false }
                         .buttonStyle(.borderedProminent)

@@ -5,6 +5,10 @@ import SwiftUI
 struct ConfirmDeletionSheet: View {
     @EnvironmentObject var model: SweepModel
     @Environment(\.dismiss) private var dismiss
+    /// For the "X free → Y free" projection below — moving to Trash doesn't
+    /// free space until Trash is emptied, so this is framed as a preview of
+    /// the eventual outcome, not an immediate result.
+    let diskStats: DiskInfoService.VolumeStats?
     let onConfirm: () -> Void
 
     var body: some View {
@@ -24,8 +28,15 @@ struct ConfirmDeletionSheet: View {
             }
             .frame(minHeight: 200)
 
-            HStack {
+            VStack(alignment: .leading, spacing: 2) {
                 Text("Total: \(model.selectedBytes.humanBytes)").bold()
+                if let diskStats {
+                    let projectedFree = diskStats.freeBytes + model.selectedBytes
+                    Text("\(diskStats.freeBytes.humanBytes) free → ~\(projectedFree.humanBytes) free once Trash is emptied")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+            }
+            HStack {
                 Spacer()
                 Button("Cancel") { dismiss() }
                 Button("Move to Trash") {

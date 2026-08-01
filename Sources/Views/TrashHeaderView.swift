@@ -1,5 +1,4 @@
 import SwiftUI
-import AppKit
 
 /// The entire body of the Trash category — its aggregate size (tracked by
 /// `SweepModel.trashBytes`, shared with the Overview chart) and its own
@@ -73,10 +72,5 @@ struct TrashHeaderView: View {
                 errorMessage = error.localizedDescription
             }
         }
-    }
-
-    private func openFullDiskAccessSettings() {
-        guard let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles") else { return }
-        NSWorkspace.shared.open(url)
     }
 }

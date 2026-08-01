@@ -16,6 +16,9 @@ struct ItemRowView: View {
                     .foregroundStyle(model.selectedIDs.contains(item.id) ? Color.accentColor : Color.secondary)
             }
             .buttonStyle(.plain)
+            .accessibilityLabel(item.displayName)
+            .accessibilityValue(model.selectedIDs.contains(item.id) ? "Selected" : "Not selected")
+            .accessibilityAddTraits(.isButton)
 
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 6) {

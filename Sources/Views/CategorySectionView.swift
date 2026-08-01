@@ -14,10 +14,18 @@ struct CategorySectionView: View {
     @State private var showSimctlConfirm = false
     @State private var showBrewConfirm = false
     @State private var searchText = ""
+    @State private var sortOrder: SortOrder = .size
+
+    private enum SortOrder: String, CaseIterable, Identifiable {
+        case size = "Size"
+        case age = "Oldest First"
+        var id: String { rawValue }
+    }
 
     private var result: ScanResult? { model.results[category] }
 
-    private var allTrashItems: [ScanItem] { sortedBySize((result?.items ?? []).filter { $0.removal == .trash }) }
+    private var rawTrashItems: [ScanItem] { (result?.items ?? []).filter { $0.removal == .trash } }
+    private var allTrashItems: [ScanItem] { sorted(rawTrashItems) }
     /// Filters by name, subtitle, or path — a category like Deep Scan can run
     /// long, so narrowing by typed text beats scrolling the whole list.
     /// Supports `*`/`?` glob wildcards (e.g. `*.dmg`) in addition to plain
@@ -25,30 +33,45 @@ struct CategorySectionView: View {
     private var trashItems: [ScanItem] {
         guard !searchText.isEmpty else { return allTrashItems }
         return allTrashItems.filter {
-            matches($0.displayName, searchText)
-                || ($0.subtitle.map { matches($0, searchText) } ?? false)
-                || matches($0.url.path, searchText)
+            $0.displayName.matchesFilter(searchText)
+                || ($0.subtitle.map { $0.matchesFilter(searchText) } ?? false)
+                || $0.url.path.matchesFilter(searchText)
         }
     }
 
-    private func matches(_ text: String, _ pattern: String) -> Bool {
-        guard pattern.contains("*") || pattern.contains("?") else {
-            return text.localizedCaseInsensitiveContains(pattern)
+    private var simctlItems: [ScanItem] { sorted((result?.items ?? []).filter { $0.removal == .cliNative(toolName: "simctl") }) }
+    private var brewItems: [ScanItem] { sorted((result?.items ?? []).filter { $0.removal == .cliNative(toolName: "brew") }) }
+    private var dockerItems: [ScanItem] { sorted((result?.items ?? []).filter { $0.removal == .cliNative(toolName: "docker") }) }
+    /// Biggest-first by default; "Oldest First" only shown once at least one
+    /// item actually carries a last-accessed date (Caches/Browser/Downloads
+    /// track it, Dev Tools/App Cleaner/Deep Scan don't) — items with no date
+    /// always sink to the bottom rather than sorting arbitrarily among them.
+    private func sorted(_ items: [ScanItem]) -> [ScanItem] {
+        switch sortOrder {
+        case .size:
+            return items.sorted { ($0.status.sizeIfKnown ?? 0) > ($1.status.sizeIfKnown ?? 0) }
+        case .age:
+            return items.sorted { lhs, rhs in
+                switch (lhs.lastAccessed, rhs.lastAccessed) {
+                case let (l?, r?): return l < r
+                case (nil, _?): return false
+                case (_?, nil): return true
+                case (nil, nil): return false
+                }
+            }
         }
-        return NSPredicate(format: "SELF LIKE[c] %@", pattern).evaluate(with: text)
     }
-    private var simctlItems: [ScanItem] { sortedBySize((result?.items ?? []).filter { $0.removal == .cliNative(toolName: "simctl") }) }
-    private var brewItems: [ScanItem] { sortedBySize((result?.items ?? []).filter { $0.removal == .cliNative(toolName: "brew") }) }
-    private var dockerItems: [ScanItem] { sortedBySize((result?.items ?? []).filter { $0.removal == .cliNative(toolName: "docker") }) }
-    /// Biggest wins first, in every list — items still `.measuring` (size
-    /// unknown) sink to the bottom and float up into place as they resolve.
-    private func sortedBySize(_ items: [ScanItem]) -> [ScanItem] {
-        items.sorted { ($0.status.sizeIfKnown ?? 0) > ($1.status.sizeIfKnown ?? 0) }
-    }
+    private var hasAgeData: Bool { rawTrashItems.contains { $0.lastAccessed != nil } }
     /// Downloads and Deep Scan are 100% `.caution` by design, so "Select All
     /// Safe" would silently select nothing there — only show it where it
     /// can actually do something.
     private var hasSafeItems: Bool { allTrashItems.contains { $0.safety == .safe } }
+    /// Whether every reviewable item in this category is already checked —
+    /// flips the bulk button between "Select All" and "Deselect All" so one
+    /// control does both instead of needing two separate buttons.
+    private var allSelected: Bool {
+        !allTrashItems.isEmpty && allTrashItems.allSatisfy { model.selectedIDs.contains($0.id) }
+    }
     /// Only worth showing a filter box once there's enough to actually
     /// scroll through — a handful of rows doesn't need one.
     private var showsSearch: Bool { allTrashItems.count > 6 }
@@ -69,8 +92,8 @@ struct CategorySectionView: View {
                     if result?.isScanning == true && (result?.items.isEmpty ?? true) {
                         HStack { ProgressView().controlSize(.small); Text("Scanning…").foregroundStyle(.secondary) }
                             .padding(.vertical, 8)
-                    } else if showsSearch {
-                        searchField
+                    } else if showsSearch || hasAgeData {
+                        toolbarRow
                     }
 
                     if !(result?.isScanning == true && (result?.items.isEmpty ?? true)) {
@@ -127,6 +150,15 @@ struct CategorySectionView: View {
                 }
                 Text(result.totalBytes.humanBytes).monospacedDigit().foregroundStyle(.secondary)
             }
+            if !allTrashItems.isEmpty {
+                Button(allSelected ? "Deselect All" : "Select All") {
+                    if allSelected { model.deselectAll(in: category) } else { model.selectAll(in: category) }
+                }
+                .buttonStyle(.borderless)
+                .font(.caption)
+                .keyboardShortcut("a", modifiers: .command)
+                .help(allSelected ? "Deselect every item in this tab (⌘A)" : "Select every item in this tab, including ones needing review (⌘A)")
+            }
             if hasSafeItems {
                 Button("Select All Safe") { model.selectAllSafe(in: category) }
                     .buttonStyle(.borderless)
@@ -159,6 +191,21 @@ struct CategorySectionView: View {
         .padding(.vertical, 4)
     }
 
+    private var toolbarRow: some View {
+        HStack(spacing: 8) {
+            if showsSearch { searchField }
+            if hasAgeData {
+                Picker("Sort", selection: $sortOrder) {
+                    ForEach(SortOrder.allCases) { order in Text(order.rawValue).tag(order) }
+                }
+                .labelsHidden()
+                .frame(width: 130)
+                .help("Sort by size or by how long since each item was last touched")
+            }
+        }
+        .padding(.bottom, 6)
+    }
+
     private var searchField: some View {
         HStack(spacing: 6) {
             Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
@@ -171,12 +218,12 @@ struct CategorySectionView: View {
                     Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary)
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel("Clear filter")
             }
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 5)
         .background(RoundedRectangle(cornerRadius: 6).fill(Color.gray.opacity(0.1)))
-        .padding(.bottom, 6)
     }
 
     private var simctlSection: some View {
@@ -220,6 +267,9 @@ struct CategorySectionView: View {
                             .foregroundStyle(model.selectedIDs.contains(item.id) ? Color.accentColor : Color.secondary)
                     }
                     .buttonStyle(.plain)
+                    .accessibilityLabel(item.displayName)
+                    .accessibilityValue(model.selectedIDs.contains(item.id) ? "Selected" : "Not selected")
+                    .accessibilityAddTraits(.isButton)
                     Text(item.displayName)
                     if let subtitle = item.subtitle {
                         Text(subtitle).font(.caption).foregroundStyle(.secondary)

@@ -44,13 +44,21 @@ enum DiskReportService {
         let data = pipe.fileHandleForReading.readDataToEndOfFile()
         process.waitUntilExit()
         guard let output = String(data: data, encoding: .utf8) else { return [] }
+        return parseDuOutput(output, rootPath: directory.path)
+    }
 
+    /// The pure parsing half of `subdirectorySizes`, factored out so it's
+    /// directly testable against synthetic `du -d 1 -k` text — no real
+    /// filesystem or subprocess needed. Drops the root's own summary line
+    /// (its path equals `rootPath` exactly) and any line that doesn't match
+    /// `du`'s tab-separated `<kb>\t<path>` shape.
+    static func parseDuOutput(_ output: String, rootPath: String) -> [Entry] {
         var entries: [Entry] = []
         for line in output.split(separator: "\n", omittingEmptySubsequences: true) {
             guard let tabIdx = line.firstIndex(of: "\t") else { continue }
             guard let kb = Int64(line[line.startIndex..<tabIdx]) else { continue }
             let path = String(line[line.index(after: tabIdx)...])
-            guard path != directory.path else { continue }  // root's own summary line, not a child
+            guard path != rootPath else { continue }  // root's own summary line, not a child
             entries.append(Entry(url: URL(fileURLWithPath: path), sizeBytes: kb * 1024, isDirectory: true))
         }
         return entries

@@ -8,6 +8,11 @@ enum TrashService {
         let item: ScanItem
         let success: Bool
         let error: String?
+        /// Where the item actually landed in Trash — `nil` on failure, or on
+        /// success if macOS didn't report one (rare, but `trashItem` doesn't
+        /// guarantee it). Only outcomes with this set can be undone, since
+        /// restoring means moving *from* here back to `item.url`.
+        var trashedURL: URL?
     }
 
     /// Moves each item to Trash in turn. A failure on one item (permission
@@ -19,11 +24,25 @@ enum TrashService {
         for (i, item) in items.enumerated() {
             if isCancelled() { break }
             do {
-                try FileManager.default.trashItem(at: item.url, resultingItemURL: nil)
-                perItem(i, DeletionOutcome(item: item, success: true, error: nil))
+                var trashedURL: NSURL?
+                try FileManager.default.trashItem(at: item.url, resultingItemURL: &trashedURL)
+                perItem(i, DeletionOutcome(item: item, success: true, error: nil, trashedURL: trashedURL as URL?))
             } catch {
-                perItem(i, DeletionOutcome(item: item, success: false, error: error.localizedDescription))
+                perItem(i, DeletionOutcome(item: item, success: false, error: error.localizedDescription, trashedURL: nil))
             }
+        }
+    }
+
+    /// Moves trashed items back to where they came from — the undo path for
+    /// a completed move-to-Trash, only possible for outcomes whose Trash-side
+    /// URL was captured. Best-effort per item, matching `moveToTrash`'s own
+    /// "one failure doesn't block the rest" contract: the original location
+    /// might already have something new there, or the item might already
+    /// have been moved/emptied out of Trash by the user in the meantime.
+    static func restore(_ outcomes: [DeletionOutcome]) {
+        for outcome in outcomes {
+            guard outcome.success, let trashedURL = outcome.trashedURL else { continue }
+            try? FileManager.default.moveItem(at: trashedURL, to: outcome.item.url)
         }
     }
 
@@ -58,6 +77,16 @@ enum TrashService {
         return roots
     }
 
+    /// Pure decision at the heart of `trashContents`/`trashSize`'s "only an
+    /// error if *everything* that exists is denied" contract — factored out
+    /// so it's directly testable against synthetic counts, no real Trash
+    /// roots or FileManager needed. `existingCount == 0` (nothing to check)
+    /// is never an error; once something exists, it's only an error if
+    /// every single one of those denied access, not just some.
+    static func shouldThrowAccessDenied(existingCount: Int, deniedCount: Int) -> Bool {
+        existingCount > 0 && deniedCount == existingCount
+    }
+
     /// Aggregates every existing Trash root. Only throws if *every* root
     /// that exists failed to read — a root that simply doesn't exist yet
     /// (e.g. never trashed anything from that volume) isn't an error.
@@ -75,7 +104,7 @@ enum TrashService {
                 deniedCount += 1
             }
         }
-        if existingCount > 0 && deniedCount == existingCount {
+        if shouldThrowAccessDenied(existingCount: existingCount, deniedCount: deniedCount) {
             throw TrashAccessDenied()
         }
         return items
@@ -94,7 +123,9 @@ enum TrashService {
         for url in contents {
             if let size = SizeCalculator.size(of: url) { total += size } else { failures += 1 }
         }
-        if failures == contents.count { throw TrashAccessDenied() }
+        if shouldThrowAccessDenied(existingCount: contents.count, deniedCount: failures) {
+            throw TrashAccessDenied()
+        }
         return total
     }
 
