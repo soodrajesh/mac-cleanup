@@ -34,6 +34,20 @@ enum DevToolScanService {
         addIfExists(home.appendingPathComponent("Library/Caches/pip"), name: "pip Cache", subtitle: regenerable, safety: .safe, to: &items)
         addIfExists(home.appendingPathComponent("Library/Caches/pypoetry"), name: "Poetry Cache", subtitle: regenerable, safety: .safe, to: &items)
 
+        // Cargo's registry (downloaded crate sources + compressed .crate
+        // files) — deliberately *not* `~/.cargo` itself, which also holds
+        // `bin/` (installed binaries from `cargo install`) and toolchain
+        // config that aren't cache and would need reinstalling if removed.
+        addIfExists(home.appendingPathComponent(".cargo/registry"), name: "Cargo Registry Cache",
+                    subtitle: "Regenerable — cargo re-downloads crates as needed", safety: .safe, to: &items)
+
+        // `~/.cache` is the XDG Base Directory spec's cache location — by
+        // that spec, anything here is explicitly safe to delete at any time;
+        // populated by whichever Homebrew-installed CLI tools follow the
+        // convention (outside the App-specific Caches/ locations above).
+        addIfExists(home.appendingPathComponent(".cache"), name: "~/.cache",
+                    subtitle: "XDG cache directory — safe to remove, tools repopulate it as needed", safety: .safe, to: &items)
+
         items.append(contentsOf: unavailableSimulators())
         return items
     }
