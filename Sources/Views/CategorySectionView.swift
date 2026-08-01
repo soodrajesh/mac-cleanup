@@ -20,13 +20,22 @@ struct CategorySectionView: View {
     private var allTrashItems: [ScanItem] { sortedBySize((result?.items ?? []).filter { $0.removal == .trash }) }
     /// Filters by name, subtitle, or path — a category like Deep Scan can run
     /// long, so narrowing by typed text beats scrolling the whole list.
+    /// Supports `*`/`?` glob wildcards (e.g. `*.dmg`) in addition to plain
+    /// substring matches.
     private var trashItems: [ScanItem] {
         guard !searchText.isEmpty else { return allTrashItems }
         return allTrashItems.filter {
-            $0.displayName.localizedCaseInsensitiveContains(searchText)
-                || ($0.subtitle?.localizedCaseInsensitiveContains(searchText) ?? false)
-                || $0.url.path.localizedCaseInsensitiveContains(searchText)
+            matches($0.displayName, searchText)
+                || ($0.subtitle.map { matches($0, searchText) } ?? false)
+                || matches($0.url.path, searchText)
         }
+    }
+
+    private func matches(_ text: String, _ pattern: String) -> Bool {
+        guard pattern.contains("*") || pattern.contains("?") else {
+            return text.localizedCaseInsensitiveContains(pattern)
+        }
+        return NSPredicate(format: "SELF LIKE[c] %@", pattern).evaluate(with: text)
     }
     private var simctlItems: [ScanItem] { sortedBySize((result?.items ?? []).filter { $0.removal == .cliNative(toolName: "simctl") }) }
     private var brewItems: [ScanItem] { sortedBySize((result?.items ?? []).filter { $0.removal == .cliNative(toolName: "brew") }) }
@@ -153,7 +162,7 @@ struct CategorySectionView: View {
     private var searchField: some View {
         HStack(spacing: 6) {
             Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
-            TextField("Filter by name or path", text: $searchText)
+            TextField("Filter by name or path (supports * wildcard)", text: $searchText)
                 .textFieldStyle(.plain)
             if !searchText.isEmpty {
                 Button {

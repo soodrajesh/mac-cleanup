@@ -45,14 +45,17 @@ struct DiskReportView: View {
     }
 
     private var breadcrumbBar: some View {
-        HStack(spacing: 4) {
+        HStack(spacing: 6) {
             ForEach(Array(breadcrumbs.enumerated()), id: \.offset) { index, crumb in
                 Button(crumb.name) { currentDirectory = crumb.url }
                     .buttonStyle(.plain)
                     .foregroundStyle(index == breadcrumbs.count - 1 ? Color.primary : Color.accentColor)
-                    .font(.caption)
+                    .font(.subheadline)
+                    .padding(.vertical, 4)
+                    .padding(.horizontal, 2)
+                    .contentShape(Rectangle())
                 if index < breadcrumbs.count - 1 {
-                    Image(systemName: "chevron.right").font(.caption2).foregroundStyle(.tertiary)
+                    Image(systemName: "chevron.right").font(.caption).foregroundStyle(.tertiary)
                 }
             }
             Spacer()
